@@ -61,7 +61,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ message: 'Password does not match' })
         }
 
-        const token = jwt.sign({ userId: user._id, email: email }, process.env.JWT_SECRET, { expiresIn: '5d' })
+        const token = jwt.sign({ userId: user._id, email: email, role: userRole }, process.env.JWT_SECRET, { expiresIn: '5d' })
 
         res.status(200).json({ token, message: 'Login successfull' })
 
