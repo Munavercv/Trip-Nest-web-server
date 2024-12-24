@@ -5,21 +5,32 @@ const userSchema = require('../models/user')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 require('dotenv').config()
+const passport = require('passport');
+require('../passport')
 
 const userSchemas = {
     admin: adminSchema,
     user: userSchema,
 };
 
+const generateJWT = (user) => {
+    return jwt.sign(
+        { userId: user._id, email: user.email, role: "user" },
+        process.env.JWT_SECRET,
+        { expiresIn: '5d' }
+    );
+};
+
 router.post('/signup', async (req, res) => {
     const { password, name, email, phone } = req.body;
     const currentdate = new Date()
-    
+
     try {
         const userExists = await userSchema.findOne({ email })
         const adminExists = await adminSchema.findOne({ email })
+        const vendorExists = await vendorSchema.findOne({ 'contact.email': email })
 
-        if (userExists || adminExists) {
+        if (userExists || adminExists || vendorExists) {
             return res.status(400).json({ message: 'User Already exists' })
         }
 
@@ -69,8 +80,45 @@ router.post('/login', async (req, res) => {
         console.log(error)
         res.status(500).json({ message: 'Internal server error' })
     }
-
-
 })
+
+
+router.get('/google-auth', passport.authenticate('google', {
+    scope:
+        ['email', 'profile']
+}))
+
+
+router.get(
+    '/google/callback',
+    passport.authenticate('google', { failureRedirect: 'http://localhost:3000/auth/login' }),
+    async (req, res) => {
+        const user = req.user;
+        const currentDate = new Date();
+
+        try {
+            const userExists = await userSchema.findOneAndUpdate(
+                { email: user.emails[0].value },
+                {
+                    $set: {
+                        name: user.displayName,
+                        updatedAt: currentDate,
+                    },
+                    $setOnInsert: {
+                        createdAt: currentDate,
+                    },
+                },
+                { upsert: true, new: true }
+            );
+            
+            const jwt = generateJWT(userExists);
+
+            res.redirect(`http://localhost:3000/auth/login?token=${jwt}`);
+        } catch (error) {
+            console.error('Error during Google login:', error);
+            res.status(500).json({ message: 'Internal Server Error' });
+        }
+    }
+);
 
 module.exports = router;
