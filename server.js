@@ -2,7 +2,8 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 const mongoose = require('mongoose');
-const authRoutes = require('./routes/auth')
+const authRoutes = require('./routes/auth');
+const adminRoutes = require('./routes/admin')
 const session = require('express-session');
 const passport = require('passport');
 
@@ -26,6 +27,7 @@ app.use(passport.initialize());
 app.use(passport.session()); 
 
 app.use('/api/auth', authRoutes)
+app.use('/api/admin', adminRoutes)
 
 mongoose.connect(mongoURI)
     .then(() => {

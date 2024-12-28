@@ -6,11 +6,13 @@ const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 require('dotenv').config()
 const passport = require('passport');
+const vendorSchema = require('../models/vendors');
 require('../passport')
 
 const userSchemas = {
     admin: adminSchema,
     user: userSchema,
+    vendor: vendorSchema
 };
 
 const generateJWT = (user) => {
@@ -69,7 +71,7 @@ router.post('/login', async (req, res) => {
 
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-            return res.status(400).json({ message: 'Password does not match' })
+            return res.status(400).json({ message: 'Password does not match' });
         }
 
         const token = jwt.sign({ userId: user._id, email: email, role: userRole }, process.env.JWT_SECRET, { expiresIn: '5d' })
