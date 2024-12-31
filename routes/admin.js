@@ -125,6 +125,94 @@ router.get('/get-package-details/:vendorId', async (req, res) => {
 })
 
 
+router.get('/get-all-users', async (req, res) => {
+    try {
+        const users = await userSchema.find({}, { name: 1, email: 1 })
+        res.status(200).json({ users: users, message: 'Successfully get all users' });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Internal server error', error })
+    }
+})
+
+
+router.get('/search-users', async (req, res) => {
+    try {
+        const { keyword } = req.query;
+        if (!keyword) {
+            return res.status(400).json({ message: 'Keyword is required' })
+        }
+        const users = await userSchema.find({
+            $or: [
+                { name: { $regex: `^${keyword}`, $options: 'i' } },
+                { email: { $regex: `^${keyword}`, $options: 'i' } }
+            ]
+        })
+
+        res.status(200).json({ users: users })
+    } catch (error) {
+        console.error('Error searching users: ', error)
+    }
+})
+
+
+router.get('/get-user-details/:userId', async (req, res) => {
+    const { userId } = req.params
+    try {
+        const userDetails = await userSchema.find({ _id: new ObjectId(userId) }, { password: 0 })
+        res.status(200).json({ userDetails: userDetails, message: 'Successfully get all users' });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Internal server error', error })
+    }
+})
+
+
+router.put('/edit-user/:userId', async (req, res) => {
+    const { userId } = req.params;
+    const updatedData = req.body.data
+
+    try {
+        const response = await userSchema.updateOne({ _id: new ObjectId(userId) }, {
+            $set: {
+                name: updatedData.name,
+                email: updatedData.email,
+                phone: updatedData.phone,
+                updatedAt: new Date(),
+            }
+        })
+
+        if (response.matchedCount === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({ message: 'user updated successfully' })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+
+})
+
+
+router.delete('/delete-user/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const response = await userSchema.deleteOne({ _id: new ObjectId(userId) })
+
+        if (response.deletedCount === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        res.status(200).json({message: 'Successfully deleted user account'})
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
 //API TO INSERT TEST DATA
 // router.get('/insert-data', async (req, res) => {
 //     const currentDate = Date.now()
