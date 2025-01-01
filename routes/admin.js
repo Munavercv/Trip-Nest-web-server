@@ -111,7 +111,7 @@ router.get('/all-disabled-vendors', async (req, res) => {
 })
 
 
-router.get('/get-package-details/:vendorId', async (req, res) => {
+router.get('/get-vendor-details/:vendorId', async (req, res) => {
     const { vendorId } = req.params
 
     try {
@@ -122,6 +122,80 @@ router.get('/get-package-details/:vendorId', async (req, res) => {
         res.status(500).json({ message: 'Internal server error' })
     }
 
+})
+
+
+router.put('/vendor-status-update/:vendorId', async (req, res) => {
+    const { vendorId } = req.params
+    const { status } = req.body
+    try {
+        const response = await vendorSchema.updateOne({ _id: new ObjectId(vendorId) }, {
+            $set: { status: status }
+        })
+        if (response.matchedCount === 0) {
+            return res.status(404).json({ message: 'Vendor not found' });
+        }
+
+        res.status(200).json({ message: 'Successfully updated vendor status' })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.delete('/delete-vendor/:vendorId', async (req, res) => {
+    const { vendorId } = req.params;
+
+    try {
+        const response = await vendorSchema.deleteOne({ _id: new ObjectId(vendorId) })
+
+        if (response.deletedCount === 0) {
+            return res.status(404).json({ message: 'Vendor not found' });
+        }
+
+        res.status(200).json({ message: 'Successfully deleted Vendor account' })
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.post('/edit-vendor/:vendorId', async (req, res) => {
+    const { vendorId } = req.params;
+    const updatedData = req.body.data;
+
+    try {
+
+        console.log(updatedData.state, updatedData.district, updatedData.address);
+        
+        const response = await vendorSchema.updateOne({ _id: new ObjectId(vendorId) }, {
+            $set: {
+                businessName: updatedData.businessName,
+                contact: {
+                    email: updatedData.email,
+                    phone: updatedData.phone,
+                },
+                businessAddress: {
+                    state: updatedData.state,
+                    district: updatedData.district,
+                    address: updatedData.address,
+                    pincode: updatedData.pincode,
+                },
+                updatedAt: new Date(),
+            }
+        })
+
+        if (response.matchedCount === 0) {
+            return res.status(404).json({ message: 'Vendor not found' });
+        }
+
+        res.status(200).json({ message: 'Vendor updated successfully' })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
 })
 
 
@@ -204,13 +278,15 @@ router.delete('/delete-user/:userId', async (req, res) => {
         if (response.deletedCount === 0) {
             return res.status(404).json({ message: 'User not found' });
         }
-        
-        res.status(200).json({message: 'Successfully deleted user account'})
+
+        res.status(200).json({ message: 'Successfully deleted user account' })
     } catch (error) {
         console.error(error)
         res.status(500).json({ message: 'Internal server error' })
     }
 })
+
+
 
 
 //API TO INSERT TEST DATA

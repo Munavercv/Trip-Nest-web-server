@@ -37,7 +37,9 @@ const vendorSchema = new mongoose.Schema({
     },
     packages: {
         type: Array,
-    }
+    },
+    createdAt: { type: Date, required: true },
+    updatedAt: { type: Date }
 }, { collection: 'vendors' });
 
 module.exports = mongoose.model('vendors', vendorSchema);
