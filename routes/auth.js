@@ -8,6 +8,7 @@ require('dotenv').config()
 const passport = require('passport');
 const vendorSchema = require('../models/vendors');
 require('../passport')
+const generateJWT = require('../utils/tokenUtils')
 
 const userSchemas = {
     admin: adminSchema,
@@ -15,13 +16,13 @@ const userSchemas = {
     vendor: vendorSchema
 };
 
-const generateJWT = (user) => {
-    return jwt.sign(
-        { userId: user._id, email: user.email, role: "user" },
-        process.env.JWT_SECRET,
-        { expiresIn: '5d' }
-    );
-};
+// const generateJWT = (user) => {
+//     return jwt.sign(
+//         { userId: user._id, email: user.email, role: "user" },
+//         process.env.JWT_SECRET,
+//         { expiresIn: '5d' }
+//     );
+// };
 
 router.post('/signup', async (req, res) => {
     const { password, name, email, phone } = req.body;
@@ -74,7 +75,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ message: 'Password does not match' });
         }
 
-        const token = jwt.sign({ userId: user._id, email: email, role: userRole }, process.env.JWT_SECRET, { expiresIn: '5d' })
+        const token = generateJWT(user, userRole)
 
         res.status(200).json({ token, message: 'Login successfull' })
 
