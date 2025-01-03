@@ -41,4 +41,22 @@ router.put('/edit-profile/:userId', async (req, res) => {
     }
 })
 
+
+router.delete('/delete-account/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const response = await userSchema.deleteOne({ _id: new ObjectId(userId) })
+
+        if (response.deletedCount === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json({ message: 'Successfully deleted user account' })
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
 module.exports = router;
