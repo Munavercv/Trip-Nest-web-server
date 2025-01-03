@@ -6,6 +6,7 @@ const generateJWT = (user, role) => {
         name: user.name,
         email: user.email,
         phone: user.phone,
+        dpUrl: user.dpUrl,
         role: role || 'user',
     };
 
