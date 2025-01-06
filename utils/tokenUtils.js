@@ -8,6 +8,7 @@ const generateJWT = (user, role) => {
         phone: user.phone,
         dpUrl: user.dpUrl,
         role: role || 'user',
+        isAppliedForVendor: user.isAppliedForVendor,
     };
 
     const secretKey = process.env.JWT_SECRET;
@@ -25,6 +26,3 @@ const generateJWT = (user, role) => {
 };
 
 module.exports = generateJWT;
-
-
-// const token = jwt.sign({ userId: user._id, email: email, role: userRole, name: user.name, phone: user.phone }, process.env.JWT_SECRET, { expiresIn: '5d' })

@@ -7,6 +7,7 @@ const userSchema = new mongoose.Schema({
     password: { type: String },
     dpUrl: { type: String },
     createdAt: { type: Date, required: true },
+    isGoogleLogin: { type: Boolean },
     updatedAt: { type: Date },
     isAppliedForVendor: { type: Boolean }
 });

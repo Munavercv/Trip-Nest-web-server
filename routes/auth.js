@@ -106,6 +106,7 @@ router.get(
                     $set: {
                         name: user.displayName,
                         updatedAt: currentDate,
+                        isGoogleLogin: true,
                     },
                     $setOnInsert: {
                         createdAt: currentDate,

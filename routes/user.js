@@ -208,13 +208,17 @@ router.post('/vendor-application', upload.fields([
 
             await newVendorApplication.save()
 
-            await userSchema.updateOne({_id: new ObjectId(sendUser)}, {
+            const user = await userSchema.findByIdAndUpdate(sendUser, {
                 $set: {
                     isAppliedForVendor: true,
-                }
-            })
-            
-            res.status(200).json({ message: 'Files uploaded successfully' })
+                },
+            },
+                { new: true }
+            )
+            const role = 'user'
+            const token = generateJWT(user, role);
+
+            res.status(200).json({ message: 'Files uploaded successfully', token: token })
         } catch (error) {
             console.error(error);
             res.status(500).json({ message: 'Internal server error' });
