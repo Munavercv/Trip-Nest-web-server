@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
     dpUrl: { type: String },
     createdAt: { type: Date, required: true },
     updatedAt: { type: Date },
+    isAppliedForVendor: { type: Boolean }
 });
 
 module.exports = mongoose.model('user', userSchema);

@@ -286,27 +286,4 @@ router.delete('/delete-user/:userId', async (req, res) => {
     }
 })
 
-
-
-
-//API TO INSERT TEST DATA
-// router.get('/insert-data', async (req, res) => {
-//     const currentDate = Date.now()
-
-//     try {
-//         const response = await paymentSchema.create({
-//             userId: '6768e8410beb1a30ef26038e', 
-//             vendorId: '676d01860118c1d67b2710bc',
-//             amount: 1999.00,
-//             success: true,
-//             transactionId: 'uueryuy8787475345',
-//             date: currentDate,
-//         })
-//         res.status(200).json({ message: 'successfully inserted data', response: response });
-//     } catch (error) {
-//         console.log(error)
-//         res.status(500).json({ error: error, message: 'failed to insert data' })
-//     }
-// })
-
 module.exports = router;

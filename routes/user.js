@@ -2,10 +2,24 @@ const express = require('express');
 const router = express.Router();
 const ObjectId = require('mongoose').Types.ObjectId;
 const userSchema = require('../models/user');
+const vendorApplicationSchema = require('../models/vendorApplications')
 const generateJWT = require('../utils/tokenUtils');
 const multer = require('multer')
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require('../utils/s3Client')
+
+const uploadFilesToS3 = async (file, folderName) => {
+    const fileKey = `${folderName}/${Date.now()}-${file.originalname}`;
+    const params = {
+        Bucket: `${process.env.AWS_BUCKET_NAME}`,
+        Key: fileKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+    }
+
+    await s3.send(new PutObjectCommand(params))
+    return `https://${params.Bucket}.s3.amazonaws.com/${fileKey}`
+}
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -111,7 +125,7 @@ router.delete('/delete-account/:userId', async (req, res) => {
                 await s3.send(new DeleteObjectCommand(deleteParams));
             } catch (error) {
                 console.error('Error deleting profile picture from S3:', error);
-                res.status(404).json({message: 'Internal server error'})
+                res.status(404).json({ message: 'Internal server error' })
             }
         }
 
@@ -128,4 +142,85 @@ router.delete('/delete-account/:userId', async (req, res) => {
     }
 })
 
-module.exports = router;
+
+router.post('/vendor-application', upload.fields([
+    { name: 'logo', maxCount: 1 },
+    { name: 'certificate', maxCount: 1 },
+    { name: 'ownerId', maxCount: 1 }
+]),
+    async (req, res) => {
+        try {
+
+            const files = req.files;
+            const { companyName,
+                sendUser,
+                email,
+                phone,
+                state,
+                district,
+                address,
+                pincode,
+                websiteUrl,
+                yearEst,
+                regions,
+                supportEmail,
+                supportPhone
+            } = req.body;
+
+            const uploadedFiles = {}
+            const folderName = 'Vendor'
+
+            for (const fieldName of Object.keys(files)) {
+                uploadedFiles[fieldName] = [];
+
+                for (const file of files[fieldName]) {
+                    const fileUrl = await uploadFilesToS3(file, folderName)
+                    uploadedFiles[fieldName].push(fileUrl)
+                }
+            }
+
+            const newVendorApplication = new vendorApplicationSchema({
+                businessName: companyName,
+                businessAddress: {
+                    state: state,
+                    district: district,
+                    address: address,
+                    pincode: pincode
+                },
+                contact: {
+                    email: email,
+                    phone: phone
+                },
+                supportContacts: {
+                    email: supportEmail,
+                    phone: supportPhone
+                },
+                status: 'pending',
+                websiteUrl: websiteUrl,
+                logoUrl: uploadedFiles.logo[0],
+                certificateUrl: uploadedFiles.certificate[0],
+                ownerIdUrl: uploadedFiles.ownerId[0],
+                regions: regions,
+                yearEst: yearEst,
+                userId: sendUser,
+                createdAt: new Date(),
+            })
+
+            await newVendorApplication.save()
+
+            await userSchema.updateOne({_id: new ObjectId(sendUser)}, {
+                $set: {
+                    isAppliedForVendor: true,
+                }
+            })
+            
+            res.status(200).json({ message: 'Files uploaded successfully' })
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Internal server error' });
+        }
+    }
+);
+
+
+module.exports = router; 

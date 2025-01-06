@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const vendorSchema = new mongoose.Schema({
+const vendorApplicationSchema = new mongoose.Schema({
     businessName: { type: String, required: true },
     businessAddress: {
         state: {
@@ -52,10 +52,11 @@ const vendorSchema = new mongoose.Schema({
     logoUrl: { type: String },
     certificateUrl: { type: String, required: true },
     ownerIdUrl: { type: String, required: true },
-    regions: {type: Array},
+    regions: { type: Array },
     yearEst: { type: Date, required: true },
+    userId: { type: String, required: true },
     createdAt: { type: Date, required: true },
     updatedAt: { type: Date }
-}, { collection: 'vendors' });
+}, { collection: 'vendorApplications' });
 
-module.exports = mongoose.model('vendors', vendorSchema);
+module.exports = mongoose.model('vendorApplications', vendorApplicationSchema);
