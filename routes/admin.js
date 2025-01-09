@@ -4,7 +4,10 @@ const vendorSchema = require('../models/vendors');
 const userSchema = require('../models/user')
 const packageSchema = require('../models/packages');
 const paymentSchema = require('../models/payments');
+const vendorApplicationSchema = require('../models/vendorApplications')
 const ObjectId = require('mongoose').Types.ObjectId;
+const { DeleteObjectCommand } = require('@aws-sdk/client-s3')
+const s3 = require('../utils/s3Client')
 
 
 router.get('/get-vendors-count', async (req, res) => {
@@ -55,38 +58,200 @@ router.get('/get-payments-count', async (req, res) => {
 });
 
 
+router.get('/get-pending-applications', async (req, res) => {
+    try {
+        const applications = await vendorApplicationSchema.find({ status: 'pending' }, {
+            businessName: 1,
+        });
+        if (!applications || applications.length === 0) {
+            return res.status(404).json({ message: 'No Applications found' })
+        }
+        res.status(200).json({ applications })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-approved-applications', async (req, res) => {
+    try {
+        const applications = await vendorApplicationSchema.find({ status: 'approved' }, {
+            businessName: 1,
+        });
+        if (!applications || applications.length === 0) {
+            return res.status(400).json({ message: 'No Applications found' })
+        }
+        res.status(200).json({ applications })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-rejected-applications', async (req, res) => {
+    try {
+        const applications = await vendorApplicationSchema.find({ status: 'rejected' }, {
+            businessName: 1,
+        });
+        if (!applications || applications.length === 0) {
+            return res.status(404).json({ message: 'No Applications found' })
+        }
+        res.status(200).json({ applications })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-activated-applications', async (req, res) => {
+    try {
+        const applications = await vendorApplicationSchema.find({ status: 'activated' }, {
+            businessName: 1,
+        });
+        if (!applications || applications.length === 0) {
+            return res.status(404).json({ message: 'No Applications found' })
+        }
+        res.status(200).json({ applications })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-application/:id', async (req, res) => {
+    const { id } = req.params
+    try {
+        const application = await vendorApplicationSchema.findById(id)
+        
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        const user = await userSchema.findById(application.userId, {
+            name: 1,
+            email: 1,
+        })
+
+        if(!user){
+            return res.status(404).json({message: 'Error while finding user'})
+        }
+
+        res.status(200).json({ application: application, user })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching application' })
+    }
+
+})
+
+
+router.put('/approve-application/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const application = await vendorApplicationSchema.findByIdAndUpdate(id, {
+            $set: { status: 'approved' }
+        },
+            { new: true }
+        )
+
+        if (!application) {
+            return res.status(404).json({ message: 'No application found' })
+        }
+
+        res.status(200).json({ application })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while Approve application' })
+    }
+})
+
+
+router.put('/reject-application/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const application = await vendorApplicationSchema.findByIdAndUpdate(id, {
+            $set: { status: 'rejected' }
+        },
+            { new: true }
+        )
+
+        if (!application) {
+            return res.status(404).json({ message: 'No application found' })
+        }
+
+        res.status(200).json({ application })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while Approve application' })
+    }
+})
+
+
+router.delete('/delete-application/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const response = await vendorApplicationSchema.findByIdAndDelete(id);
+
+        if (!response) {
+            return res.status(404).json({ message: 'Application not found' });
+        }
+
+        const { logoUrl, certificateUrl, ownerIdUrl } = response;
+
+        const extractKey = (url) => url.split('.amazonaws.com/')[1];
+
+        const filesToDelete = [logoUrl, certificateUrl, ownerIdUrl]
+            .filter(Boolean)
+            .map(extractKey);
+
+        for (const key of filesToDelete) {
+            const deleteParams = {
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: key,
+            };
+
+            try {
+                const deleteCommand = new DeleteObjectCommand(deleteParams);
+                await s3.send(deleteCommand);
+            } catch (error) {
+                console.error(`Failed to delete file: ${key}`, error);
+            }
+        }
+
+        const user = await userSchema.findByIdAndUpdate(response.userId, {
+            $set: {
+                isAppliedForVendor: false
+            },
+        },
+            { new: true }
+        );
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const role = 'user';
+        const token = generateJWT(user, role);
+
+        res.status(200).json({
+            message: 'Application deleted successfully',
+            token: token,
+        });
+    } catch (error) {
+        console.error('Error while deleting vendor application:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+});
+
+
 router.get('/all-active-vendors', async (req, res) => {
     try {
         const vendors = await vendorSchema.find({ status: 'active' }, {
-            businessName: 1,
-            'contact.email': 1,
-        })
-        res.status(200).json({ vendors: vendors })
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({ message: 'Internal server error' })
-    }
-})
-
-
-router.get('/all-pending-vendors', async (req, res) => {
-    try {
-        const vendors = await vendorSchema.find({ status: 'pending' }, {
-            businessName: 1,
-            'contact.email': 1,
-        })
-        res.status(200).json({ vendors: vendors })
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({ message: 'Internal server error' })
-    }
-})
-
-
-router.get('/all-rejected-vendors', async (req, res) => {
-    try {
-        const vendors = await vendorSchema.find({ status: 'rejected' }, {
-            businessName: 1,
+            name: 1,
             'contact.email': 1,
         })
         res.status(200).json({ vendors: vendors })
@@ -100,7 +265,7 @@ router.get('/all-rejected-vendors', async (req, res) => {
 router.get('/all-disabled-vendors', async (req, res) => {
     try {
         const vendors = await vendorSchema.find({ status: 'disabled' }, {
-            businessName: 1,
+            name: 1,
             'contact.email': 1,
         })
         res.status(200).json({ vendors: vendors })
@@ -167,9 +332,6 @@ router.post('/edit-vendor/:vendorId', async (req, res) => {
     const updatedData = req.body.data;
 
     try {
-
-        console.log(updatedData.state, updatedData.district, updatedData.address);
-        
         const response = await vendorSchema.updateOne({ _id: new ObjectId(vendorId) }, {
             $set: {
                 businessName: updatedData.businessName,

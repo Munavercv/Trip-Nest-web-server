@@ -7,6 +7,7 @@ const bcrypt = require('bcrypt')
 require('dotenv').config()
 const passport = require('passport');
 const vendorSchema = require('../models/vendors');
+const vendorApplicationSchema = require('../models/vendorApplications')
 require('../passport')
 const generateJWT = require('../utils/tokenUtils')
 
@@ -114,7 +115,7 @@ router.get(
                 },
                 { upsert: true, new: true }
             );
-            
+
             const jwt = generateJWT(userExists);
 
             res.redirect(`http://localhost:3000/auth/login?token=${jwt}`);
@@ -124,5 +125,68 @@ router.get(
         }
     }
 );
+
+
+router.put('/activate-vendor-account/:applicationId', async (req, res) => {
+    const { password } = req.body;
+    const { applicationId } = req.params;
+
+    try {
+        const application = await vendorApplicationSchema.findByIdAndUpdate(applicationId,
+            {
+                $set: {
+                    status: 'activated'
+                }
+            },
+            { new: true },
+        )
+
+        if (!application) {
+            return res.status(404).json({ message: 'Application not found!' })
+        }
+
+        const existingVendor = await vendorSchema.findOne({ applicationId: applicationId })
+        if (existingVendor) {
+            return res.status(400).json({ message: 'Vendor account already found for this application' })
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10)
+
+        const newVendor = new vendorSchema({
+            name: application.businessName,
+            contact: {
+                // email: application.contact.email,
+                // phone: application.contact.phone,
+                ...application.contact
+            },
+            supportContact: {
+                // email: application.supportContacts.email,
+                // phone: application.supportContacts.phone,
+                ...application.supportContacts
+            },
+            address: {
+                // state: application.businessAddress.state,
+                // district: application.businessAddress.district,
+                // address: application.businessAddress.address,
+                // pincode: application.businessAddress.pincode,
+                ...application.businessAddress
+            },
+            applicationId: application._id,
+            logoUrl: application.logoUrl,
+            websiteUrl: application.websiteUrl,
+            status: 'active',
+            password: hashedPassword,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+        })
+
+        await newVendor.save()
+
+        res.status(200).json({ message: 'Successfully activated vendor account' })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while activating your account!' })
+    }
+})
 
 module.exports = router;

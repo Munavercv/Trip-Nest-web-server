@@ -3,6 +3,7 @@ const router = express.Router();
 const ObjectId = require('mongoose').Types.ObjectId;
 const userSchema = require('../models/user');
 const vendorApplicationSchema = require('../models/vendorApplications')
+const vendorSchema = require('../models/vendors')
 const generateJWT = require('../utils/tokenUtils');
 const multer = require('multer')
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
@@ -225,6 +226,27 @@ router.post('/vendor-application', upload.fields([
         }
     }
 );
+
+
+router.get('/get-application-name-and-status/:userId', async (req, res) => {
+    const { userId } = req.params
+
+    try {
+        const application = await vendorApplicationSchema.findOne({ userId }, {
+            businessName: 1,
+            status: 1,
+        })
+
+        if (!application) {
+            return res.status(404).json({ message: 'No application found' })
+        }
+
+        res.status(200).json({ application })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
 
 
 module.exports = router; 

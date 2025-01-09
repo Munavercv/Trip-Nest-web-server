@@ -45,16 +45,13 @@ const vendorApplicationSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    packages: {
-        type: Array,
-    },
     websiteUrl: { type: String },
     logoUrl: { type: String },
     certificateUrl: { type: String, required: true },
     ownerIdUrl: { type: String, required: true },
     regions: { type: Array },
     yearEst: { type: Date, required: true },
-    userId: { type: String, required: true },
+    userId: { type: String, required: true, unique: true },
     createdAt: { type: Date, required: true },
     updatedAt: { type: Date }
 }, { collection: 'vendorApplications' });

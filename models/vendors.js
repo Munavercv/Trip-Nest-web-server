@@ -1,61 +1,32 @@
 const mongoose = require('mongoose');
 
 const vendorSchema = new mongoose.Schema({
-    businessName: { type: String, required: true },
-    businessAddress: {
-        state: {
-            type: String,
-            required: true,
-        },
-        district: {
-            type: String,
-            required: true,
-        },
-        address: {
-            type: String,
-            required: true,
-        },
-        pincode: {
-            type: String,
-            required: true,
-        }
-    },
+    name: { type: String, required: true },
     contact: {
-        email: {
-            type: String,
-            required: true,
-            unique: true,
-        },
-        phone: {
-            type: String,
-            required: true,
-        }
+        email: { type: String, required: true, unique: true },
+        phone: { type: String, required: true }
     },
-    supportContacts: {
-        email: {
-            type: String,
-            required: true,
-        },
-        phone: {
-            type: String,
-            required: true,
-        }
+    supportContact: {
+        email: { type: String, required: true, unique: true },
+        phone: { type: String, required: true }
     },
-    status: {
-        type: String,
-        required: true,
+    applicationId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'vendorApplications',
+        required: true
     },
-    packages: {
-        type: Array,
+    address: {
+        state: { type: String },
+        district: { type: String },
+        address: { type: String },
+        pincode: { type: String },
     },
-    websiteUrl: { type: String },
     logoUrl: { type: String },
-    certificateUrl: { type: String, required: true },
-    ownerIdUrl: { type: String, required: true },
-    regions: {type: Array},
-    yearEst: { type: Date, required: true },
+    websiteUrl: { type: String },
+    status: { type: String, required: true, default: 'active' },
+    password: { type: String, required: true },
     createdAt: { type: Date, required: true },
-    updatedAt: { type: Date }
+    updatedAt: { type: Date },
 }, { collection: 'vendors' });
 
 module.exports = mongoose.model('vendors', vendorSchema);
