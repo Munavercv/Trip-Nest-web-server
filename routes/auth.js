@@ -17,14 +17,6 @@ const userSchemas = {
     vendor: vendorSchema
 };
 
-// const generateJWT = (user) => {
-//     return jwt.sign(
-//         { userId: user._id, email: user.email, role: "user" },
-//         process.env.JWT_SECRET,
-//         { expiresIn: '5d' }
-//     );
-// };
-
 router.post('/signup', async (req, res) => {
     const { password, name, email, phone } = req.body;
     const currentdate = new Date()
@@ -61,11 +53,16 @@ router.post('/signup', async (req, res) => {
 
 router.post('/login', async (req, res) => {
     const { email, password, userRole } = req.body
+    let user;
 
     try {
         const schema = userSchemas[userRole]
 
-        const user = await schema.findOne({ email })
+        if (userRole === 'vendor') {
+            user = await schema.findOne({ 'contact.email': email })
+        } else {
+            user = await schema.findOne({ email })
+        }
 
         if (!user) {
             return res.status(400).json({ message: 'User not found' })
@@ -73,7 +70,7 @@ router.post('/login', async (req, res) => {
 
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-            return res.status(400).json({ message: 'Password does not match' });
+            return res.status(400).json({ message: 'Incorrect password' });
         }
 
         const token = generateJWT(user, userRole)
@@ -155,20 +152,12 @@ router.put('/activate-vendor-account/:applicationId', async (req, res) => {
         const newVendor = new vendorSchema({
             name: application.businessName,
             contact: {
-                // email: application.contact.email,
-                // phone: application.contact.phone,
                 ...application.contact
             },
             supportContact: {
-                // email: application.supportContacts.email,
-                // phone: application.supportContacts.phone,
                 ...application.supportContacts
             },
             address: {
-                // state: application.businessAddress.state,
-                // district: application.businessAddress.district,
-                // address: application.businessAddress.address,
-                // pincode: application.businessAddress.pincode,
                 ...application.businessAddress
             },
             applicationId: application._id,

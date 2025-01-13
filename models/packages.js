@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const packageSchema = new mongoose.Schema({
     vendorId: { type: String, required: true },
     title: { type: String, required: true },
+    imageUrl: { type: String },
     description: { type: String },
     category: { type: String, required: true },
     destination: { type: String, required: true },
@@ -13,7 +14,7 @@ const packageSchema = new mongoose.Schema({
     transportationMode: { type: String, required: true },
     totalSlots: { type: Number },
     availableSlots: { type: Number },
-    status: { type: String },
+    status: { type: String, required: true },
     avgRating: { type: Number },
     createdAt: { type: Date, required: true },
     updatedAt: { type: Date, default: Date.now }

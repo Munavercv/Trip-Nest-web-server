@@ -3,7 +3,7 @@ const router = express.Router();
 const statesSchema = require('../models/states');
 const userSchema = require('../models/user')
 const vendorApplicationSchema = require('../models/vendorApplications');
-// const ObjectId = require('mongoose').Types.ObjectId;
+const packageSchema = require('../models/packages')
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require('../utils/s3Client')
 const generateJWT = require('../utils/tokenUtils')
@@ -88,6 +88,48 @@ router.delete('/delete-vendor-application/:userId', async (req, res) => {
         res.status(500).json({ message: 'Internal server error' });
     }
 });
+
+
+router.get('/get-package/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const package = await packageSchema.findById(id)
+        if (!package) {
+            return res.status(404).json({ message: 'Package not found' })
+        }
+
+        res.status(200).json({ package })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'internal server error' })
+    }
+})
+
+
+router.delete('/delete-package/:id', async (req, res) => {
+    const { id } = req.params
+
+    try {
+        const package = await packageSchema.findByIdAndDelete(id)
+
+        if (!package) {
+            return res.status(404).json({ message: 'Package not found' })
+        }
+
+        const imageKey = package.imageUrl.split('.amazonaws.com/')[1]
+        const deleteParams = {
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: imageKey,
+        }
+        await s3.send(new DeleteObjectCommand(deleteParams))
+
+        res.status(200).json({ message: 'Package deleted successfully' })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
 
 
 

@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin')
 const userRoutes = require('./routes/user');
+const vendorRoutes = require('./routes/vendor')
 const commonRoutes = require('./routes/common')
 const session = require('express-session');
 const passport = require('passport');
@@ -31,6 +32,7 @@ app.use(passport.session());
 app.use('/api/auth', authRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/user', userRoutes)
+app.use('/api/vendor', vendorRoutes)
 app.use('/api/common', commonRoutes)
 
 mongoose.connect(mongoURI)
