@@ -78,6 +78,7 @@ router.get('/get-pending-packages/:vendorId', async (req, res) => {
             price: 1,
             destination: 1,
             imageUrl: 1,
+            'rating.avgRating': 1,
         })
         if (!packages || packages.length === 0) {
             return res.status(404).json({ message: 'No packages found' })
@@ -100,6 +101,7 @@ router.get('/get-approved-packages/:vendorId', async (req, res) => {
             price: 1,
             destination: 1,
             imageUrl: 1,
+            'rating.avgRating': 1,
         })
         if (!packages || packages.length === 0) {
             return res.status(404).json({ message: 'No packages found' })
@@ -122,6 +124,30 @@ router.get('/get-rejected-packages/:vendorId', async (req, res) => {
             price: 1,
             destination: 1,
             imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ message: 'No packages found' })
+        }
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-active-packages/:vendorId', async (req, res) => {
+    const { vendorId } = req.params
+    try {
+        const packages = await packageSchema.find({ vendorId, status: 'active' }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
         })
         if (!packages || packages.length === 0) {
             return res.status(404).json({ message: 'No packages found' })
@@ -144,6 +170,7 @@ router.get('/get-inactive-packages/:vendorId', async (req, res) => {
             price: 1,
             destination: 1,
             imageUrl: 1,
+            'rating.avgRating': 1,
         })
         if (!packages || packages.length === 0) {
             return res.status(404).json({ message: 'No packages found' })
@@ -162,7 +189,8 @@ router.put('/activate-package/:id', async (req, res) => {
     try {
         const package = await packageSchema.findByIdAndUpdate(id, {
             $set: {
-                status: 'active'
+                status: 'active',
+                updatedAt: new Date()
             },
         },
             { new: true }
@@ -185,7 +213,8 @@ router.put('/deactivate-package/:id', async (req, res) => {
     try {
         const package = await packageSchema.findByIdAndUpdate(id, {
             $set: {
-                status: 'inactive'
+                status: 'inactive',
+                updatedAt: new Date()
             },
         },
             { new: true }

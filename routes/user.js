@@ -4,6 +4,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 const userSchema = require('../models/user');
 const vendorApplicationSchema = require('../models/vendorApplications')
 const vendorSchema = require('../models/vendors')
+const packageSchema = require('../models/packages')
 const generateJWT = require('../utils/tokenUtils');
 const multer = require('multer')
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
@@ -116,7 +117,7 @@ router.delete('/delete-account/:userId', async (req, res) => {
         }
 
         if (user.dpUrl) {
-            const dpKey = user.dpUrl.split('.amazonaws.com/')[1]; // Extract the key from the S3 URL
+            const dpKey = user.dpUrl.split('.amazonaws.com/')[1];
             const deleteParams = {
                 Bucket: process.env.AWS_BUCKET_NAME,
                 Key: dpKey,
@@ -245,6 +246,26 @@ router.get('/get-application-name-and-status/:userId', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-top-packages', async (req, res) => {
+    try {
+        const packages = await packageSchema.find({ status: 'active' }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+            .sort({ 'rating.avgRating': -1 }).limit(15)
+
+        res.status(200).json({packages})
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({message: 'Internal server error'})
     }
 })
 

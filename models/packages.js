@@ -15,6 +15,12 @@ const packageSchema = new mongoose.Schema({
     totalSlots: { type: Number },
     availableSlots: { type: Number },
     status: { type: String, required: true },
+    rejectionReason: { type: String },
+    rating: {
+        totalRating: { type: Number, default: 0 },
+        ratingsCount: { type: Number, default: 0 },
+        avgRating: { type: Number, default: 0 },
+    },
     avgRating: { type: Number },
     createdAt: { type: Date, required: true },
     updatedAt: { type: Date, default: Date.now }

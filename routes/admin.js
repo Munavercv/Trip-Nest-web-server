@@ -126,7 +126,7 @@ router.get('/get-application/:id', async (req, res) => {
     const { id } = req.params
     try {
         const application = await vendorApplicationSchema.findById(id)
-        
+
         if (!application) {
             return res.status(404).json({ message: 'Application not found' });
         }
@@ -136,8 +136,8 @@ router.get('/get-application/:id', async (req, res) => {
             email: 1,
         })
 
-        if(!user){
-            return res.status(404).json({message: 'Error while finding user'})
+        if (!user) {
+            return res.status(404).json({ message: 'Error while finding user' })
         }
 
         res.status(200).json({ application: application, user })
@@ -445,6 +445,169 @@ router.delete('/delete-user/:userId', async (req, res) => {
     } catch (error) {
         console.error(error)
         res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-all-pending-packages', async (req, res) => {
+    try {
+        const packages = await packageSchema.find({ status: "pending" }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ message: 'No packages found' })
+        }
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while fetching packages' })
+    }
+})
+
+
+router.get('/get-all-approved-packages', async (req, res) => {
+    try {
+        const packages = await packageSchema.find({ status: "approved" }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ message: 'No packages found' })
+        }
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while fetching packages' })
+    }
+})
+
+
+router.get('/get-all-rejected-packages', async (req, res) => {
+    try {
+        const packages = await packageSchema.find({ status: "rejected" }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ message: 'No packages found' })
+        }
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while fetching packages' })
+    }
+})
+
+
+router.get('/get-all-active-packages', async (req, res) => {
+    try {
+        const packages = await packageSchema.find({ status: "active" }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ message: 'No packages found' })
+        }
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while fetching packages' })
+    }
+})
+
+
+router.get('/get-all-inactive-packages', async (req, res) => {
+    try {
+        const packages = await packageSchema.find({ status: "inactive" }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ message: 'No packages found' })
+        }
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while fetching packages' })
+    }
+})
+
+
+router.put('/approve-package/:id', async (req, res) => {
+    const { id } = req.params
+
+    try {
+        const package = await packageSchema.findByIdAndUpdate(id, {
+            $set: {
+                status: 'approved',
+                updatedAt: new Date()
+            },
+            $unset: { rejectionReason: '' }
+        },
+            { new: true }
+        )
+
+        if (!package) {
+            return res.status(404).json({ message: 'Package not found' })
+        }
+
+        res.status(200).json({ message: 'Package approved successfully', package })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Error while approving package' })
+    }
+})
+
+
+router.put('/reject-package/:id', async (req, res) => {
+    const { id } = req.params
+    const { rejectionReason } = req.body
+
+    try {
+        const package = await packageSchema.findByIdAndUpdate(id, {
+            $set: {
+                status: 'rejected',
+                rejectionReason,
+                updatedAt: new Date()
+            }
+        },
+            { new: true }
+        )
+
+        if (!package) {
+            return res.status(404).json({ message: 'Package not found' })
+        }
+
+        res.status(200).json({ message: 'Package rejected successfully', package })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Error while rejecting package' })
     }
 })
 
