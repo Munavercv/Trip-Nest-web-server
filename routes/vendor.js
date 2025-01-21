@@ -29,7 +29,8 @@ router.post('/create-package/:vendorId', upload.single('image'), async (req, res
     } = req.body
 
     try {
-        const fileKey = `Vendor/${Date.now()}-${image.originalname} `
+        const fileKey = `Vendor/${Date.now()}-${image.originalname}`
+                
         const params = {
             Bucket: `${process.env.AWS_BUCKET_NAME}`,
             Key: fileKey,
