@@ -1,10 +1,13 @@
 const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
-    userId: { type: String, required: true },
-    packageId: { type: String, required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: 'users', required: true },
+    packageId: { type: mongoose.Schema.Types.ObjectId, ref: 'packages', required: true },
+    numberOfSeats: {type: Number, required: true},
+    specialRequests: {type: String},
+    totalAmount: {type: Number, required: true},
     status: { type: String, required: true },
-    bookingDate: { type: String, required: true },
+    bookingDate: { type: Date, default: Date.now },
     paymentDetails: {
         paymentId: { type: String },
         amount: { type: Number }

@@ -4,6 +4,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 const userSchema = require('../models/user');
 const vendorApplicationSchema = require('../models/vendorApplications')
 const vendorSchema = require('../models/vendors')
+const bookingSchema = require('../models/bookings')
 const packageSchema = require('../models/packages')
 const generateJWT = require('../utils/tokenUtils');
 const multer = require('multer')
@@ -262,12 +263,81 @@ router.get('/get-top-packages', async (req, res) => {
         })
             .sort({ 'rating.avgRating': -1 }).limit(15)
 
-        res.status(200).json({packages})
+        res.status(200).json({ packages })
     } catch (error) {
         console.error(error);
-        res.status(500).json({message: 'Internal server error'})
+        res.status(500).json({ message: 'Internal server error' })
     }
 })
 
+
+router.post('/book-package/:packageId', async (req, res) => {
+    const { packageId } = req.params;
+    const { numberOfSeats, specialRequests } = req.body.formData;
+    const { userId, totalAmount } = req.body
+
+    try {
+        const existingBooking = await bookingSchema.findOne({ userId: userId, packageId: packageId })
+        if (existingBooking) {
+            return res.status(400).json({ message: 'Already booked this package' })
+        }
+
+        const newBooking = new bookingSchema({
+            userId,
+            packageId,
+            numberOfSeats,
+            totalAmount,
+            specialRequests,
+            status: 'pending',
+            bookingDate: new Date(),
+        })
+
+        await newBooking.save()
+
+        res.status(200).json({ message: 'Booking successfull' })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while booking' })
+    }
+})
+
+
+router.get('/get-booking-details/:bookingId', async (req, res) => {
+    const { bookingId } = req.params;
+    try {
+        const bookingDetails = await bookingSchema.aggregate([
+            { $match: { _id: new ObjectId(bookingId) } },
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'packageId',
+                    foreignField: '_id',
+                    as: 'packageDetails'
+                }
+            },
+            {
+                $project: {
+                    numberOfSeats: 1,
+                    specialRequests: 1,
+                    totalAmount: 1,
+                    status: 1,
+                    bookingDate: 1,
+                    'packageDetails._id': 1,
+                    'packageDetails.title': 1,
+                    'packageDetails.destination': 1,
+                    'packageDetails.startDate': 1,
+                }
+            }
+        ])
+
+        if (!bookingDetails)
+            return res.status(404).json({ message: 'Booking details not found' })
+
+        res.status(200).json({ bookingDetails: bookingDetails[0] })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'error while fetching booking details' })
+    }
+})
 
 module.exports = router; 

@@ -7,6 +7,10 @@ const packageSchema = require('../models/packages')
 const { DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require('../utils/s3Client')
 const generateJWT = require('../utils/tokenUtils')
+const conversationSchema = require('../models/conversation')
+const messageSchema = require('../models/message');
+const bookingSchema = require('../models/bookings');
+const ObjectId = require('mongoose').Types.ObjectId;
 
 
 router.get('/get-all-states-data', async (req, res) => {
@@ -132,17 +136,177 @@ router.delete('/delete-package/:id', async (req, res) => {
 })
 
 
+router.post('/start-conversation', async (req, res) => {
+    const { userId, vendorId } = req.body
 
-//API TO INSERT TEST DATA
+    try {
+        let conversation = await conversationSchema.findOne({ participants: { $all: [userId, vendorId] } })
+        if (!conversation) {
+            conversation = new conversationSchema({
+                participants: [userId, vendorId],
+                lastMessage: {
+                    content: '',
+                    timestamp: new Date(),
+                    sender: null,
+                }
+            })
+            await conversation.save()
+        }
+
+        res.status(200).json({ message: "Conversation created successfully", conversation })
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: 'Error starting conversation' })
+    }
+})
+
+
+router.get('/get-conversations/:userId', async (req, res) => {
+    const { userId } = req.params
+
+    try {
+        const conversations = await conversationSchema.aggregate([
+            { $match: { participants: new ObjectId(userId) } },
+
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'participants',
+                    foreignField: '_id',
+                    as: 'userDetails'
+                }
+            },
+
+            {
+                $lookup: {
+                    from: 'vendors',
+                    localField: 'participants',
+                    foreignField: '_id',
+                    as: 'vendorDetails'
+                }
+            },
+
+            {
+                $project: {
+                    _id: 1,
+                    participants: 1,
+                    createdAt: 1,
+                    lastMessage: 1,
+                    userDetails: {
+                        _id: 1,
+                        name: 1,
+                        dpUrl: 1
+                    },
+                    vendorDetails: {
+                        _id: 1,
+                        name: 1,
+                        dpUrl: 1
+                    }
+                }
+            },
+
+            {
+                $sort: {
+                    'lastMessage.timestamp': -1
+                }
+            }
+        ])
+        if (!conversations) {
+            return res.status(404).json({ message: "No conversations found" })
+        }
+        res.status(200).json({ conversations })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching conversations' })
+    }
+})
+
+
+router.get('/get-messages/:chatId', async (req, res) => {
+    const { chatId } = req.params
+
+    try {
+        const messages = await messageSchema.find({ conversationId: new ObjectId(chatId) })
+        if (!messages) {
+            return res.status(404).json({ message: "No messages Yet" })
+        }
+
+        res.status(200).json({ messages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while fetching messages' })
+    }
+})
+
+
+router.get('/get-bookings-by-user/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+
+        const bookings = await bookingSchema.aggregate([
+            { $match: { userId: new ObjectId(userId) } },
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'packageId',
+                    foreignField: '_id',
+                    as: 'packageData'
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    status: 1,
+                    bookingDate: 1,
+                    'packageData.title': 1
+                }
+            },
+            {
+                $sort: {
+                    bookingDate: -1
+                }
+            }
+        ])
+
+        if (!bookings || bookings.length === 0) {
+            return res.status(404).json({ message: 'No bookings found' })
+        }
+
+        res.status(200).json({ bookings })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching bookings' })
+    }
+})
+
+
+router.delete('/delete-booking/:bookingId', async (req, res) => {
+    const { bookingId } = req.params
+
+    try {
+        await bookingSchema.deleteOne({ _id: new ObjectId(bookingId) })
+        res.status(200).json({ message: 'Deleted successfully' })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'An error occured' })
+    }
+})
+
+
+
 // router.post('/insert-data', async (req, res) => {
+//     const convId = new ObjectId('67889083b109515f6a790484')
 
 //     try {
-//         const newState = new statesSchema({
-//             state: 'Kerala',
-//             districts: ['Kasaragod', 'Kannur', 'Kozhikode', 'Wayanad', 'Malappuram', 'Palakkad', 'Ernakulam', 'Kollam', 'Trissur']
+//         const newMessage = new messageSchema({
+//             conversationId: convId,
+//             sender: new ObjectId('6768e8410beb1a30ef26038e'),
+//             timestamp: new Date(),
+//             content: 'Hello are you fine'
 //         })
-//         await newState.save()
-//         res.status(200).json({ message: 'successfully inserted data', response: newState });
+//         await newMessage.save()
+//         res.status(200).json({ message: 'successfully inserted data', response: newMessage });
 //     } catch (error) {
 //         console.log(error)
 //         res.status(500).json({ error: error, message: 'failed to insert data' })

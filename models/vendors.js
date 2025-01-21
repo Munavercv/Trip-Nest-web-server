@@ -21,7 +21,7 @@ const vendorSchema = new mongoose.Schema({
         address: { type: String },
         pincode: { type: String },
     },
-    logoUrl: { type: String },
+    dpUrl: { type: String },
     websiteUrl: { type: String },
     status: { type: String, required: true, default: 'active' },
     password: { type: String, required: true },

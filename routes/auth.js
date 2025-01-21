@@ -161,7 +161,7 @@ router.put('/activate-vendor-account/:applicationId', async (req, res) => {
                 ...application.businessAddress
             },
             applicationId: application._id,
-            logoUrl: application.logoUrl,
+            dpUrl: application.logoUrl,
             websiteUrl: application.websiteUrl,
             status: 'active',
             password: hashedPassword,

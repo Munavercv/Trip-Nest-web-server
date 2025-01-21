@@ -7,7 +7,7 @@ const generateJWT = (user, role) => {
         userId: user._id,
         name: user.name,
         role: role || 'user',
-        dpUrl: isVendor ? user.logoUrl : user.dpUrl,
+        dpUrl:  user.dpUrl,
         email: isVendor ? user.contact.email : user.email,
         phone: isVendor ? user.contact.phone : user.phone,
         ...(isVendor ? {} : { isAppliedForVendor: user.isAppliedForVendor }),
