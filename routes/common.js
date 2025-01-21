@@ -128,6 +128,8 @@ router.delete('/delete-package/:id', async (req, res) => {
         }
         await s3.send(new DeleteObjectCommand(deleteParams))
 
+        await bookingSchema.deleteMany({ packageId: new ObjectId(id) })
+
         res.status(200).json({ message: 'Package deleted successfully' })
     } catch (error) {
         console.error(error);
@@ -346,7 +348,7 @@ router.get('/get-pending-bookings-by-vendor/:vendorId', async (req, res) => {
                     'packageDetails.title': 1,
                     'userDetails.email': 1,
                 }
-            }, 
+            },
             {
                 $sort: {
                     bookingDate: 1
@@ -400,7 +402,7 @@ router.get('/get-approved-bookings-by-vendor/:vendorId', async (req, res) => {
                     'packageDetails.title': 1,
                     'userDetails.email': 1,
                 }
-            }, 
+            },
             {
                 $sort: {
                     bookingDate: 1
@@ -454,7 +456,7 @@ router.get('/get-rejected-bookings-by-vendor/:vendorId', async (req, res) => {
                     'packageDetails.title': 1,
                     'userDetails.email': 1,
                 }
-            }, 
+            },
             {
                 $sort: {
                     bookingDate: 1
