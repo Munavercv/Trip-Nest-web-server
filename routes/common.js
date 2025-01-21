@@ -285,14 +285,192 @@ router.delete('/delete-booking/:bookingId', async (req, res) => {
     const { bookingId } = req.params
 
     try {
-        await bookingSchema.deleteOne({ _id: new ObjectId(bookingId) })
-        res.status(200).json({ message: 'Deleted successfully' })
+
+        const booking = await bookingSchema.findByIdAndDelete(bookingId)
+
+        if (!booking) {
+            return res.status(404).json({ message: 'Booking not found' });
+        }
+
+        if (booking.status === 'approved') {
+            const result = await packageSchema.updateOne(
+                { _id: new ObjectId(booking.packageId) },
+                { $inc: { availableSlots: booking.numberOfSeats } }
+            )
+
+            if (result.modifiedCount === 0) {
+                return res.status(400).json({ message: 'Failed to update available slots' });
+            }
+        }
+
+        res.status(200).json({ message: 'Deleted successfully' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'An error occured' })
+        res.status(500).json({ message: 'An error occurred' });
+    }
+});
+
+
+router.get('/get-pending-bookings-by-vendor/:vendorId', async (req, res) => {
+    const { vendorId } = req.params
+
+    try {
+
+        const bookings = await bookingSchema.aggregate([
+            {
+                $match: {
+                    vendorId: new ObjectId(vendorId),
+                    status: 'pending'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'packageId',
+                    foreignField: '_id',
+                    as: 'packageDetails'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'userDetails'
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    bookingDate: 1,
+                    'packageDetails.title': 1,
+                    'userDetails.email': 1,
+                }
+            }, 
+            {
+                $sort: {
+                    bookingDate: 1
+                }
+            }
+        ])
+
+        if (!bookings || bookings.length === 0)
+            return res.status(404).json({ message: 'No bookings found' })
+
+        res.status(200).json({ bookings })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
     }
 })
 
+
+router.get('/get-approved-bookings-by-vendor/:vendorId', async (req, res) => {
+    const { vendorId } = req.params
+
+    try {
+
+        const bookings = await bookingSchema.aggregate([
+            {
+                $match: {
+                    vendorId: new ObjectId(vendorId),
+                    status: 'approved'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'packageId',
+                    foreignField: '_id',
+                    as: 'packageDetails'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'userDetails'
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    bookingDate: 1,
+                    'packageDetails.title': 1,
+                    'userDetails.email': 1,
+                }
+            }, 
+            {
+                $sort: {
+                    bookingDate: 1
+                }
+            }
+        ])
+
+        if (!bookings || bookings.length === 0)
+            return res.status(404).json({ message: 'No bookings found' })
+
+        res.status(200).json({ bookings })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-rejected-bookings-by-vendor/:vendorId', async (req, res) => {
+    const { vendorId } = req.params
+
+    try {
+
+        const bookings = await bookingSchema.aggregate([
+            {
+                $match: {
+                    vendorId: new ObjectId(vendorId),
+                    status: 'rejected'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'packageId',
+                    foreignField: '_id',
+                    as: 'packageDetails'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'userDetails'
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    bookingDate: 1,
+                    'packageDetails.title': 1,
+                    'userDetails.email': 1,
+                }
+            }, 
+            {
+                $sort: {
+                    bookingDate: 1
+                }
+            }
+        ])
+
+        if (!bookings || bookings.length === 0)
+            return res.status(404).json({ message: 'No bookings found' })
+
+        res.status(200).json({ bookings })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
 
 
 // router.post('/insert-data', async (req, res) => {

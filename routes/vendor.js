@@ -4,6 +4,9 @@ const multer = require('multer')
 const s3 = require('../utils/s3Client')
 const { PutObjectCommand } = require('@aws-sdk/client-s3')
 const packageSchema = require('../models/packages')
+const bookingSchema = require('../models/bookings');
+const { findByIdAndUpdate } = require('../models/states');
+const ObjectId = require('mongoose').Types.ObjectId;
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -185,7 +188,7 @@ router.get('/get-inactive-packages/:vendorId', async (req, res) => {
 
 
 router.put('/activate-package/:id', async (req, res) => {
-    const {id} = req.params
+    const { id } = req.params
     try {
         const package = await packageSchema.findByIdAndUpdate(id, {
             $set: {
@@ -209,7 +212,7 @@ router.put('/activate-package/:id', async (req, res) => {
 
 
 router.put('/deactivate-package/:id', async (req, res) => {
-    const {id} = req.params
+    const { id } = req.params
     try {
         const package = await packageSchema.findByIdAndUpdate(id, {
             $set: {
@@ -230,5 +233,109 @@ router.put('/deactivate-package/:id', async (req, res) => {
         res.status(500).json({ message: 'Error while Activating package' })
     }
 })
+
+
+router.get('/get-booking-details/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const bookingDetails = await bookingSchema.aggregate([
+            { $match: { _id: new ObjectId(id) } },
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'packageId',
+                    foreignField: '_id',
+                    as: 'packageDetails'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            {
+                $project: {
+                    numberOfSeats: 1,
+                    specialRequests: 1,
+                    totalAmount: 1,
+                    status: 1,
+                    bookingDate: 1,
+                    'packageDetails._id': 1,
+                    'packageDetails.title': 1,
+                    'packageDetails.destination': 1,
+                    'packageDetails.startDate': 1,
+                    'user._id': 1,
+                    'user.email': 1,
+                }
+            }
+        ])
+
+        if (!bookingDetails)
+            return res.status(404).json({ message: 'Booking details not found' })
+
+        res.status(200).json({ bookingDetails: bookingDetails[0] })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'error while fetching booking details' })
+    }
+})
+
+
+router.put('/approve-booking/:bookigId', async (req, res) => {
+    const { bookigId } = req.params;
+
+    try {
+
+        const booking = await bookingSchema.findByIdAndUpdate(bookigId, {
+            $set: { status: 'approved' },
+        },
+        )
+
+        if (!booking) {
+            return res.status(404).json({ message: "Booking not found" })
+        }
+
+        const result = await packageSchema.updateOne(
+            { _id: new ObjectId(booking.packageId) },
+            { $inc: { availableSlots: -booking.numberOfSeats } },
+        );
+
+        if (result.modifiedCount === 0) {
+            return res.status(400).json({ message: "Failed to update available slots" });
+        }
+
+        res.status(200).json({ message: 'Successfully approved booking' })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Error while Approving' })
+    }
+})
+
+
+router.put('/reject-booking/:bookingId', async (req, res) => {
+    const { bookingId } = req.params
+
+    try {
+        const booking = await bookingSchema.findByIdAndUpdate(bookingId,
+            {
+                $set: {
+                    status: 'rejected'
+                }
+            }
+        )
+
+        if(!booking)
+            return res.status(404).json({message: 'Booking data not found'})
+
+        res.status(200).json({message: 'successfully rejected booking'})
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Failed to reject booking' })
+    }
+})
+
 
 module.exports = router; 
