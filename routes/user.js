@@ -274,7 +274,7 @@ router.get('/get-top-packages', async (req, res) => {
 router.post('/book-package/:packageId', async (req, res) => {
     const { packageId } = req.params;
     const { numberOfSeats, specialRequests } = req.body.formData;
-    const { userId, totalAmount } = req.body
+    const { userId, totalAmount, vendorId } = req.body
 
     try {
         const existingBooking = await bookingSchema.findOne({ userId: userId, packageId: packageId })
@@ -285,6 +285,7 @@ router.post('/book-package/:packageId', async (req, res) => {
         const newBooking = new bookingSchema({
             userId,
             packageId,
+            vendorId,
             numberOfSeats,
             totalAmount,
             specialRequests,
