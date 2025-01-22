@@ -5,8 +5,10 @@ const s3 = require('../utils/s3Client')
 const { PutObjectCommand } = require('@aws-sdk/client-s3')
 const packageSchema = require('../models/packages')
 const bookingSchema = require('../models/bookings');
+const vendorSchema = require('../models/vendors')
 const { findByIdAndUpdate } = require('../models/states');
 const ObjectId = require('mongoose').Types.ObjectId;
+const generateJWT = require('../utils/tokenUtils')
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -30,7 +32,7 @@ router.post('/create-package/:vendorId', upload.single('image'), async (req, res
 
     try {
         const fileKey = `Vendor/${Date.now()}-${image.originalname}`
-                
+
         const params = {
             Bucket: `${process.env.AWS_BUCKET_NAME}`,
             Key: fileKey,
@@ -70,6 +72,34 @@ router.post('/create-package/:vendorId', upload.single('image'), async (req, res
         res.status(500).json({ message: 'Internal server error' })
     }
 
+})
+
+
+router.get('/get-vendor-top-packages/:vendorId', async (req, res) => {
+    const { vendorId } = req.params;
+
+    try {
+        const packages = await packageSchema
+            .find({ vendorId: new ObjectId(vendorId), status: 'active' }, {
+                _id: 1,
+                title: 1,
+                category: 1,
+                price: 1,
+                destination: 1,
+                imageUrl: 1,
+                'rating.avgRating': 1,
+            })
+            .sort({ 'rating.avgRating': -1 })
+            .limit(15)
+
+        if (!packages || packages.length === 0)
+            return res.status(404).json({ message: 'packages not found' })
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
 })
 
 
@@ -328,13 +358,49 @@ router.put('/reject-booking/:bookingId', async (req, res) => {
             }
         )
 
-        if(!booking)
-            return res.status(404).json({message: 'Booking data not found'})
+        if (!booking)
+            return res.status(404).json({ message: 'Booking data not found' })
 
-        res.status(200).json({message: 'successfully rejected booking'})
+        res.status(200).json({ message: 'successfully rejected booking' })
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Failed to reject booking' })
+    }
+})
+
+
+router.put('/edit-profile/:vendorId', async (req, res) => {
+    const { vendorId } = req.params;
+    const updatedData = req.body;
+
+    try {
+        const updatedVendor = await vendorSchema.findByIdAndUpdate(vendorId, {
+            $set: {
+                name: updatedData.name,
+                contact: {
+                    email: updatedData.contact.email,
+                    phone: updatedData.contact.phone
+                },
+                supportContact: {
+                    email: updatedData.supportContact.email,
+                    phone: updatedData.supportContact.phone
+                },
+                updatedAt: new Date()
+            }
+        },
+            { new: true }
+        )
+
+        if (!updatedVendor)
+            return res.status(404).json({ message: 'Vendor not found' })
+
+        const userRole = 'vendor'
+        const token = generateJWT(updatedVendor, userRole)
+
+        res.status(200).json({ message: "Profile updated successfully", token });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'failed to update' })
     }
 })
 
