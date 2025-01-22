@@ -10,6 +10,7 @@ const generateJWT = require('../utils/tokenUtils')
 const conversationSchema = require('../models/conversation')
 const messageSchema = require('../models/message');
 const bookingSchema = require('../models/bookings');
+const vendorSchema = require('../models/vendors')
 const ObjectId = require('mongoose').Types.ObjectId;
 
 
@@ -471,6 +472,22 @@ router.get('/get-rejected-bookings-by-vendor/:vendorId', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-vendor-details/:vendorId', async (req, res) => {
+    const { vendorId } = req.params;
+
+    try {
+        const vendorDetails = await vendorSchema.findById(vendorId, { password: 0 })
+        if (!vendorDetails)
+            return res.status(404).json({ message: "Vendor not found" })
+
+        res.status(200).json({ vendorDetails })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching vendor details' })
     }
 })
 
