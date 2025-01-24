@@ -6,9 +6,9 @@ const { PutObjectCommand } = require('@aws-sdk/client-s3')
 const packageSchema = require('../models/packages')
 const bookingSchema = require('../models/bookings');
 const vendorSchema = require('../models/vendors')
-const { findByIdAndUpdate } = require('../models/states');
 const ObjectId = require('mongoose').Types.ObjectId;
 const generateJWT = require('../utils/tokenUtils')
+const { createNotification, sendAdminNotifications } = require('../utils/notificationUtils')
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -64,7 +64,14 @@ router.post('/create-package/:vendorId', upload.single('image'), async (req, res
             status: 'pending',
             createdAt: new Date(),
         });
-        await newPackage.save();
+        const result = await newPackage.save();
+
+        await sendAdminNotifications(
+            'New package',
+            `New package waiting for approval`,
+            `/admin/view-package/${result._id}`
+        );
+
 
         res.status(200).json({ message: 'Package added successfully' })
     } catch (error) {
@@ -315,12 +322,12 @@ router.get('/get-booking-details/:id', async (req, res) => {
 })
 
 
-router.put('/approve-booking/:bookigId', async (req, res) => {
-    const { bookigId } = req.params;
+router.put('/approve-booking/:bookingId', async (req, res) => {
+    const { bookingId } = req.params;
 
     try {
 
-        const booking = await bookingSchema.findByIdAndUpdate(bookigId, {
+        const booking = await bookingSchema.findByIdAndUpdate(bookingId, {
             $set: { status: 'approved' },
         },
         )
@@ -337,6 +344,13 @@ router.put('/approve-booking/:bookigId', async (req, res) => {
         if (result.modifiedCount === 0) {
             return res.status(400).json({ message: "Failed to update available slots" });
         }
+
+        await createNotification(
+            'Your Booking is Approved',
+            'One of your package bookings has been approved. Check approved bookings to see the details.',
+            booking.userId.toString(),
+            `/view-booking-details/${bookingId}`
+        );
 
         res.status(200).json({ message: 'Successfully approved booking' })
     } catch (error) {
@@ -360,6 +374,13 @@ router.put('/reject-booking/:bookingId', async (req, res) => {
 
         if (!booking)
             return res.status(404).json({ message: 'Booking data not found' })
+
+        await createNotification(
+            'Your Booking is Rejected',
+            'One of your package bookings has been rejected. Cancel and book again if you want to',
+            booking.userId.toString(),
+            `/view-booking-details/${bookingId}`
+        );
 
         res.status(200).json({ message: 'successfully rejected booking' })
     } catch (error) {

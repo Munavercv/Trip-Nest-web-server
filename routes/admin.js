@@ -8,7 +8,7 @@ const vendorApplicationSchema = require('../models/vendorApplications')
 const ObjectId = require('mongoose').Types.ObjectId;
 const { DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const s3 = require('../utils/s3Client')
-
+const { createNotification } = require('../utils/notificationUtils')
 
 router.get('/get-vendors-count', async (req, res) => {
     try {
@@ -162,6 +162,13 @@ router.put('/approve-application/:id', async (req, res) => {
             return res.status(404).json({ message: 'No application found' })
         }
 
+        await createNotification(
+            'Congratulations, Vendor application is approved',
+            `Your vendor application for ${application.businessName} is approved. click here or go to profile to activate vendor account`,
+            application.userId,
+            '/view-my-vendor-application'
+        );
+
         res.status(200).json({ application })
     } catch (error) {
         console.error(error);
@@ -182,6 +189,13 @@ router.put('/reject-application/:id', async (req, res) => {
         if (!application) {
             return res.status(404).json({ message: 'No application found' })
         }
+
+        await createNotification(
+            'Your Vendor application is rejected',
+            `Your vendor application for ${application.businessName} is rejected.`,
+            application.userId,
+            '/view-my-vendor-application'
+        );
 
         res.status(200).json({ application })
     } catch (error) {
@@ -577,6 +591,13 @@ router.put('/approve-package/:id', async (req, res) => {
             return res.status(404).json({ message: 'Package not found' })
         }
 
+        await createNotification(
+            'Congratulations, Your Package is approved',
+            `Your package ${package.title} is approved.You need to activate package to make it public`,
+            package.vendorId,
+            `/vendor/view-package/${id}`
+        );
+
         res.status(200).json({ message: 'Package approved successfully', package })
     } catch (error) {
         console.log(error);
@@ -603,6 +624,14 @@ router.put('/reject-package/:id', async (req, res) => {
         if (!package) {
             return res.status(404).json({ message: 'Package not found' })
         }
+
+        await createNotification(
+            'Your Package is Rejected',
+            `Your package ${package.title} is Rejected.`,
+            package.vendorId,
+            `/vendor/view-package/${id}`
+        );
+
 
         res.status(200).json({ message: 'Package rejected successfully', package })
     } catch (error) {

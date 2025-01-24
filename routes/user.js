@@ -10,6 +10,7 @@ const generateJWT = require('../utils/tokenUtils');
 const multer = require('multer')
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require('../utils/s3Client')
+const {sendAdminNotifications} = require('../utils/notificationUtils')
 
 const uploadFilesToS3 = async (file, folderName) => {
     const fileKey = `${folderName}/${Date.now()}-${file.originalname}`;
@@ -209,7 +210,7 @@ router.post('/vendor-application', upload.fields([
                 createdAt: new Date(),
             })
 
-            await newVendorApplication.save()
+           const result =  await newVendorApplication.save()
 
             const user = await userSchema.findByIdAndUpdate(sendUser, {
                 $set: {
@@ -220,6 +221,12 @@ router.post('/vendor-application', upload.fields([
             )
             const role = 'user'
             const token = generateJWT(user, role);
+
+            await sendAdminNotifications(
+                'New vendor application',
+                `by ${user.email}. company name: ${companyName}`,
+                `/admin/view-application/${result._id}`
+            )
 
             res.status(200).json({ message: 'Files uploaded successfully', token: token })
         } catch (error) {

@@ -11,7 +11,9 @@ const conversationSchema = require('../models/conversation')
 const messageSchema = require('../models/message');
 const bookingSchema = require('../models/bookings');
 const vendorSchema = require('../models/vendors')
+const notificationSchema = require('../models/notifications')
 const ObjectId = require('mongoose').Types.ObjectId;
+const { createNotification, markAsRead, markAllAsRead, sendAdminNotifications } = require('../utils/notificationUtils')
 
 
 router.get('/get-all-states-data', async (req, res) => {
@@ -491,6 +493,104 @@ router.get('/get-vendor-details/:vendorId', async (req, res) => {
     }
 })
 
+
+router.post('/create-notification', async (req, res) => {
+    const { title, body, targetId } = req.body;
+
+    try {
+        const result = await createNotification(title, body, targetId);
+
+        if (!result.success)
+            return res.status(400).json({ message: result.message || 'TargetId not valid' })
+
+        res.status(200).json({ message: 'Successfully created notification' })
+    } catch (error) {
+        console.error('api Error while creating notification: ', error);
+        res.status(500).json({ message: 'Notification api error' })
+    }
+})
+
+
+router.post('/create-admin-notification', async (req, res) => {
+    const { title, body } = req.body;
+
+    try {
+        const result = await sendAdminNotifications(title, body);
+
+        if (!result.success)
+            return res.status(400).json({ message: result.message || 'TargetId not valid' })
+
+        res.status(200).json({ message: 'Successfully created notification' })
+    } catch (error) {
+        console.error('api Error while creating notification: ', error);
+        res.status(500).json({ message: 'Notification api error' })
+    }
+})
+
+
+router.get('/get-notification-count/:userId', async (req, res) => {
+    const { userId } = req.params
+
+    try {
+        const count = await notificationSchema.countDocuments({ targetIds: new ObjectId(userId), isRead: false })
+        res.status(200).json({ count })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'failed to get notification' })
+    }
+})
+
+
+router.get('/get-notifications/:userId', async (req, res) => {
+    const { userId } = req.params
+
+    try {
+        const notifications = await notificationSchema
+            .find({ targetIds: new ObjectId(userId), isRead: false })
+            .sort({ createdAt: -1 })
+
+        if (!notifications || notifications.length === 0)
+            return res.status(404).json({ message: "You have no notifications" })
+
+        res.status(200).json({ notifications })
+    } catch (error) {
+        res.status(500).json({ message: 'No notifications' })
+    }
+})
+
+
+router.put('/mark-notification-as-read/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const result = await markAsRead(id)
+        if (!result.success) {
+            return res.status(400).json({ message: 'Error updating notification as read' })
+        }
+
+        res.status(200).json({ message: 'Successfully updated notification as read' })
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: 'Error updating notification as read' })
+    }
+})
+
+router.put('/mark-notifications-as-read/:targetId', async (req, res) => {
+    const { targetId } = req.params;
+
+    try {
+        const result = await markAllAsRead(targetId)
+
+        if (!result.success) {
+            return res.status(400).json({ message: 'Error updating notifications as read' })
+        }
+
+        res.status(200).json({ message: 'Successfully updated notifications as read' })
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ message: 'Error updating notification as read' })
+    }
+})
 
 // router.post('/insert-data', async (req, res) => {
 //     const convId = new ObjectId('67889083b109515f6a790484')
