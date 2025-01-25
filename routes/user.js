@@ -10,7 +10,7 @@ const generateJWT = require('../utils/tokenUtils');
 const multer = require('multer')
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require('../utils/s3Client')
-const {sendAdminNotifications} = require('../utils/notificationUtils')
+const { sendAdminNotifications } = require('../utils/notificationUtils')
 
 const uploadFilesToS3 = async (file, folderName) => {
     const fileKey = `${folderName}/${Date.now()}-${file.originalname}`;
@@ -210,7 +210,7 @@ router.post('/vendor-application', upload.fields([
                 createdAt: new Date(),
             })
 
-           const result =  await newVendorApplication.save()
+            const result = await newVendorApplication.save()
 
             const user = await userSchema.findByIdAndUpdate(sendUser, {
                 $set: {
@@ -345,6 +345,104 @@ router.get('/get-booking-details/:bookingId', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'error while fetching booking details' })
+    }
+})
+
+
+router.get('/get-packages-by-category', async (req, res) => {
+    const { category, page, limit } = req.query;
+    try {
+        const skip = (page - 1) * limit
+
+        if (category === 'All') {
+            const packages = await packageSchema.find({
+                status: 'active',
+            }, {
+                title: 1,
+                category: 1,
+                price: 1,
+                destination: 1,
+                imageUrl: 1,
+                'rating.avgRating': 1,
+            })
+                .skip(skip)
+                .limit(limit)
+                .sort({ 'rating.avgRating': -1 })
+            return res.status(200).json({ packages })
+        } else {
+            const packages = await packageSchema.find({
+                status: 'active',
+                category: { $regex: category, $options: 'i' }
+            }, {
+                title: 1,
+                category: 1,
+                price: 1,
+                destination: 1,
+                imageUrl: 1,
+                'rating.avgRating': 1,
+            })
+                .skip(skip)
+                .limit(limit)
+                .sort({ 'rating.avgRating': -1 })
+            return res.status(200).json({ packages })
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/search-packages', async (req, res) => {
+    try {
+        let { query } = req.query;
+
+        if (query) {
+            const parsedQuery = new URLSearchParams(query);
+            req.query.destination = parsedQuery.get('destination');
+            req.query.month = parsedQuery.get('month');
+            req.query.theme = parsedQuery.get('category');
+        }
+
+        const { destination, month, theme } = req.query;
+
+        const dbQuery = {};
+        dbQuery.status = 'active'
+
+        if (destination) {
+            dbQuery.destination = { $regex: destination, $options: 'i' };
+        }
+
+        if (month) {
+            const startDate = new Date(`${month}-01`);
+            const endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+            dbQuery.startDate = { $gte: startDate, $lte: endDate };
+        }
+
+        if (theme) {
+            dbQuery.category = theme;
+        }
+
+        const packages = await packageSchema.find(dbQuery, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+            .sort({ 'rating.avgRating': -1 })
+
+        res.status(200).json({
+            success: true,
+            packages,
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: 'An error occurred while searching for packages.',
+            error: error.message,
+        });
     }
 })
 
