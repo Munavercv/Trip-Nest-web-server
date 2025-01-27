@@ -62,6 +62,7 @@ router.get('/get-pending-applications', async (req, res) => {
     try {
         const applications = await vendorApplicationSchema.find({ status: 'pending' }, {
             businessName: 1,
+            'contact.email': 1
         });
         if (!applications || applications.length === 0) {
             return res.status(404).json({ message: 'No Applications found' })
@@ -78,6 +79,7 @@ router.get('/get-approved-applications', async (req, res) => {
     try {
         const applications = await vendorApplicationSchema.find({ status: 'approved' }, {
             businessName: 1,
+            'contact.email': 1
         });
         if (!applications || applications.length === 0) {
             return res.status(400).json({ message: 'No Applications found' })
@@ -94,6 +96,7 @@ router.get('/get-rejected-applications', async (req, res) => {
     try {
         const applications = await vendorApplicationSchema.find({ status: 'rejected' }, {
             businessName: 1,
+            'contact.email': 1
         });
         if (!applications || applications.length === 0) {
             return res.status(404).json({ message: 'No Applications found' })
@@ -110,6 +113,7 @@ router.get('/get-activated-applications', async (req, res) => {
     try {
         const applications = await vendorApplicationSchema.find({ status: 'activated' }, {
             businessName: 1,
+            'contact.email': 1
         });
         if (!applications || applications.length === 0) {
             return res.status(404).json({ message: 'No Applications found' })
@@ -146,6 +150,35 @@ router.get('/get-application/:id', async (req, res) => {
         res.status(500).json({ message: 'Error fetching application' })
     }
 
+})
+
+
+router.get('/search-applications', async (req, res) => {
+    try {
+        const { keyword, status } = req.query;
+        if (!keyword)
+            return res.status(400).json({ message: 'Keyword required' })
+
+        const query = {
+            $or: [
+                { businessName: { $regex: `^${keyword}`, $options: 'i' } },
+                { 'contact.email': { $regex: `^${keyword}`, $options: 'i' } }
+            ]
+        }
+
+        if (status) query.status = status;
+
+
+        const results = await vendorApplicationSchema.find(query, {
+            businessName: 1,
+            'contact.email': 1,
+        })
+
+        res.status(200).json({ results })
+    } catch (error) {
+        console.error('Error finding Applications: ', error);
+        res.status(500).json({ message: 'Error finding Applications' })
+    }
 })
 
 
@@ -442,6 +475,52 @@ router.put('/edit-user/:userId', async (req, res) => {
         res.status(500).json({ message: 'Internal server error' })
     }
 
+})
+
+
+router.get('/search-vendors', async (req, res) => {
+    try {
+        const { keyword, status } = req.query;
+        if (!keyword)
+            return res.status(400).json({ message: 'Keyword is required' })
+
+        const query = {
+            $or: [
+                { name: { $regex: `^${keyword}`, $options: 'i' } },
+                { 'contact.email': { $regex: `^${keyword}`, $options: 'i' } }
+            ]
+        }
+
+        if (status)
+            query.status = status
+
+        const result = await vendorSchema.find(query)
+
+        if (result.length === 0)
+            return res.status(404).json({ message: '0 results found' })
+
+        res.status(200).json({ result })
+    } catch (error) {
+        console.error('Error finding vendors: ', error);
+        res.status(500).json({ message: 'Error finding vendors' })
+    }
+})
+
+
+router.get('/get-vendor-by-email', async (req, res) => {
+    try {
+        const { email } = req.query;
+
+        const vendor = await vendorSchema.findOne({ 'contact.email': email })
+
+        if (!vendor)
+            return res.status(404).json({ message: 'No Vendor found' })
+
+        res.status(200).json({ vendor })
+    } catch (error) {
+        console.error(error.message);
+        res.status(500).json({ message: 'Error getting vendor' })
+    }
 })
 
 

@@ -592,6 +592,106 @@ router.put('/mark-notifications-as-read/:targetId', async (req, res) => {
     }
 })
 
+
+router.get('/get-packages-by-vendor/:vendorId', async (req, res) => {
+    const { page, limit } = req.query;
+    const { vendorId } = req.params
+    try {
+        const skip = (page - 1) * limit
+
+        const packages = await packageSchema.find({ vendorId }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            status: 1,
+            'rating.avgRating': 1,
+            createdAt: 1
+        })
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: 1 })
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/search-packages', async (req, res) => {
+    const { keyword, vendorId } = req.query;
+    if (!keyword)
+        return res.status(400).json({ message: 'Keyword is required' })
+
+    try {
+        const query = { title: { $regex: `^${keyword}`, $options: 'i' } }
+
+        if (vendorId) query.vendorId = new ObjectId(vendorId)
+
+        const results = await packageSchema.find(query)
+
+        res.status(200).json({ results })
+    } catch (error) {
+        console.error('Error finding vendors: ', error);
+        res.status(500).json({ message: 'Error finding vendors' })
+    }
+})
+
+
+router.get('/view-bookings-by-package/:packageId', async (req, res) => {
+    const { packageId } = req.params;
+
+    try {
+        const bookings = await bookingSchema.aggregate([
+            {
+                $match: {
+                    packageId: new ObjectId(packageId),
+                }
+            },
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'packageId',
+                    foreignField: '_id',
+                    as: 'packageDetails'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'userDetails'
+                }
+            },
+            {
+                $project: {
+                    _id: 1,
+                    bookingDate: 1,
+                    status: 1,
+                    'packageDetails.title': 1,
+                    'userDetails.email': 1,
+                }
+            },
+            {
+                $sort: {
+                    bookingDate: 1
+                }
+            }
+        ])
+
+        if (!bookings || bookings.length === 0)
+            return res.status(404).json({ message: 'No packages found' })
+
+        res.status(200).json({ bookings })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching packages' })
+    }
+})
+
 // router.post('/insert-data', async (req, res) => {
 //     const convId = new ObjectId('67889083b109515f6a790484')
 
