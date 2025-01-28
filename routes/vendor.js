@@ -426,4 +426,31 @@ router.put('/edit-profile/:vendorId', async (req, res) => {
 })
 
 
+router.get('/pending-booking-count/:vendorId', async (req, res) => {
+    const { vendorId } = req.params
+
+    try {
+        const count = await bookingSchema.countDocuments({ vendorId: new ObjectId(vendorId), status: 'pending' })
+
+        res.status(200).json({ count })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: 'Error fetching booking count' })
+    }
+})
+
+
+router.get('/active-package-count/:vendorId', async (req, res) => {
+    const { vendorId } = req.params;
+
+    try {
+        const count = await packageSchema.countDocuments({ vendorId, status: 'active' })
+        res.status(200).json({ count })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({ message: 'Error fetching package count' })
+    }
+})
+
+
 module.exports = router; 
