@@ -9,7 +9,8 @@ const userSchema = new mongoose.Schema({
     createdAt: { type: Date, required: true },
     isGoogleLogin: { type: Boolean },
     updatedAt: { type: Date },
-    isAppliedForVendor: { type: Boolean }
+    isAppliedForVendor: { type: Boolean },
+    favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: 'packages' }]
 });
 
 module.exports = mongoose.model('user', userSchema);

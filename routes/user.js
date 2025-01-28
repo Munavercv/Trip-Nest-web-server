@@ -446,4 +446,65 @@ router.get('/search-packages', async (req, res) => {
     }
 })
 
+
+router.put('/add-or-remove-favourite', async (req, res) => {
+    const { packageId, userId, action } = req.body;
+    if (!packageId || !userId || !action)
+        return res.status(400).json({ message: 'Missing packageId, userId or action' })
+    try {
+        if (action === 'add') {
+            await userSchema.findByIdAndUpdate(userId,
+                { $addToSet: { favorites: packageId } },
+                { new: true }
+            )
+        } else if (action === 'remove') {
+            await userSchema.findByIdAndUpdate(
+                userId,
+                { $pull: { favorites: packageId } },
+                { new: true }
+            );
+        }
+
+        res.status(200).json({ message: 'successfully updated favourites' })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'error while updating favourite' })
+    }
+})
+
+router.get('/check-package-is-favourite', async (req, res) => {
+    const { packageId, userId } = req.query;
+
+    if (!packageId || !userId)
+        return res.status(400).json({ message: 'Package id or user id not found' })
+    
+    try {
+
+        const isFavourite = await userSchema.findOne({
+            _id: new ObjectId(userId),
+            favorites: { $in: [new ObjectId(packageId)] }
+        })
+
+
+        res.status(200).json({ isFavourite })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-favourite-packages/:userId', async (req, res) => {
+    const {userId} = req.params;
+
+    try {
+        const packages = await userSchema.findById(userId).populate('favorites')
+        
+        res.status(200).json({packages: packages.favorites})
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({message: 'Error fetching favourites'})
+    }
+})
+
 module.exports = router; 
