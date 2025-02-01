@@ -17,7 +17,7 @@ const conversationSchema = require('./models/conversation');
 const messageSchema = require('./models/message')
 
 // const mongoURI = 'mongodb://127.0.0.1:27017/tripNestDB';
-const mongoURI = 'mongodb://admin:pass123@172.18.0.2:27017/tripNestDB'
+const mongoURI = 'mongodb://admin:pass123@127.0.0.1:27017/tripNestDB?authSource=admin'
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
