@@ -92,7 +92,7 @@ router.get('/google-auth', passport.authenticate('google', {
 
 router.get(
     '/google/callback',
-    passport.authenticate('google', { failureRedirect: 'http://localhost:3000/auth/login' }),
+    passport.authenticate('google', { failureRedirect: 'https://tripnest.xyz/auth/login' }),
     async (req, res) => {
         const user = req.user;
         const currentDate = new Date();
@@ -115,7 +115,7 @@ router.get(
 
             const jwt = generateJWT(userExists);
 
-            res.redirect(`http://localhost:3000/auth/login?token=${jwt}`);
+            res.redirect(`https://tripnest.xyz/auth/login?token=${jwt}`);
         } catch (error) {
             console.error('Error during Google login:', error);
             res.status(500).json({ message: 'Internal Server Error' });

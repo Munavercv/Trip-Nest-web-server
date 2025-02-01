@@ -16,11 +16,12 @@ const ObjectId = require('mongoose').Types.ObjectId;
 const conversationSchema = require('./models/conversation');
 const messageSchema = require('./models/message')
 
-const mongoURI = 'mongodb://127.0.0.1:27017/tripNestDB';
+// const mongoURI = 'mongodb://127.0.0.1:27017/tripNestDB';
+const mongoURI = 'mongodb://admin:pass123@172.18.0.2:27017/tripNestDB'
 
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
-app.use(cors({ origin: 'http://localhost:3000' }));
+app.use(cors({ origin: 'https://tripnest.xyz' }));
 
 app.use(
     session({
@@ -53,7 +54,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: 'http://localhost:3000',
+        origin: 'https://tripnest.xyz',
         methods: ['GET', 'POST'],
     },
 });
