@@ -5,6 +5,7 @@ const userSchema = require('../models/user')
 const packageSchema = require('../models/packages');
 const paymentSchema = require('../models/payments');
 const vendorApplicationSchema = require('../models/vendorApplications')
+const bookingSchema = require('../models/bookings')
 const ObjectId = require('mongoose').Types.ObjectId;
 const { DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const s3 = require('../utils/s3Client')
@@ -718,5 +719,55 @@ router.put('/reject-package/:id', async (req, res) => {
         res.status(500).json({ message: 'Error while rejecting package' })
     }
 })
+
+
+router.get('/get-booking-details/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const bookingDetails = await bookingSchema.aggregate([
+            { $match: { _id: new ObjectId(id) } },
+            {
+                $lookup: {
+                    from: 'packages',
+                    localField: 'packageId',
+                    foreignField: '_id',
+                    as: 'packageDetails'
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'userId',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            {
+                $project: {
+                    numberOfSeats: 1,
+                    specialRequests: 1,
+                    totalAmount: 1,
+                    status: 1,
+                    bookingDate: 1,
+                    'packageDetails._id': 1,
+                    'packageDetails.title': 1,
+                    'packageDetails.destination': 1,
+                    'packageDetails.startDate': 1,
+                    'user._id': 1,
+                    'user.email': 1,
+                }
+            }
+        ])
+
+        if (!bookingDetails)
+            return res.status(404).json({ message: 'Booking details not found' })
+
+        res.status(200).json({ bookingDetails: bookingDetails[0] })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'error while fetching booking details' })
+    }
+})
+
 
 module.exports = router;

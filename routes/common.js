@@ -683,7 +683,7 @@ router.get('/view-bookings-by-package/:packageId', async (req, res) => {
         ])
 
         if (!bookings || bookings.length === 0)
-            return res.status(404).json({ message: 'No packages found' })
+            return res.status(404).json({ message: 'No Bookings found' })
 
         res.status(200).json({ bookings })
     } catch (error) {
