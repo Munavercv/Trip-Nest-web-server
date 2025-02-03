@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer')
 const s3 = require('../utils/s3Client')
-const { PutObjectCommand } = require('@aws-sdk/client-s3')
+const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const packageSchema = require('../models/packages')
 const bookingSchema = require('../models/bookings');
 const vendorSchema = require('../models/vendors')
@@ -12,7 +12,6 @@ const { createNotification, sendAdminNotifications } = require('../utils/notific
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
-
 
 router.post('/create-package/:vendorId', upload.single('image'), async (req, res) => {
     const { vendorId } = req.params
@@ -451,6 +450,95 @@ router.get('/active-package-count/:vendorId', async (req, res) => {
         res.status(500).json({ message: 'Error fetching package count' })
     }
 })
+
+
+router.put('/update-package/:id', upload.single('packageImage'), async (req, res) => {
+    const { id } = req.params;
+    const {
+        title,
+        imageUrl,
+        description,
+        category,
+        destination,
+        days,
+        startDate,
+        price,
+        inclusions,
+        transportationMode,
+        totalSlots
+    } = req.body;
+
+    const newImage = req.file;
+    let imageS3Url = imageUrl;
+
+    if (newImage) {
+        const oldKey = imageUrl ? imageUrl.split('.amazonaws.com/')[1] : null;
+
+        if (oldKey) {
+            const deleteParams = {
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: oldKey,
+            };
+
+            try {
+                await s3.send(new DeleteObjectCommand(deleteParams));
+            } catch (error) {
+                console.error('Failed to delete old image:', error);
+            }
+        }
+
+        const newKey = `Vendor/${Date.now()}-${newImage.originalname}`;
+        const uploadParams = {
+            Bucket: process.env.AWS_BUCKET_NAME,
+            Key: newKey,
+            Body: newImage.buffer,
+            ContentType: newImage.mimetype,
+        };
+
+        try {
+            await s3.send(new PutObjectCommand(uploadParams));
+            imageS3Url = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${newKey}`;
+        } catch (error) {
+            console.error('Failed to upload new image:', error);
+            return res.status(500).json({ message: 'Error uploading new image' });
+        }
+    }
+
+    const updatedPackage = {
+        title,
+        description,
+        category,
+        destination,
+        days: Number(days),
+        startDate,
+        price: Number(price),
+        inclusions,
+        transportationMode,
+        totalSlots: Number(totalSlots),
+        imageUrl: imageS3Url,
+        status: 'pending',
+        updatedAt: new Date()
+    };
+
+    try {
+        await packageSchema.findByIdAndUpdate(id, {
+            ...updatedPackage,
+            $unset: { rejectionReason: "" }
+        });
+
+        await sendAdminNotifications(
+            'Package Updated',
+            `"${updatedPackage.title}" is Updated. review it now`,
+            `/admin/view-package/${id}`
+        );
+
+        res.status(200).json({ message: 'Package updated successfully' });
+    } catch (error) {
+        console.error('Error updating package:', error);
+        res.status(500).json({ message: 'Error updating package details' });
+    }
+});
+
 
 
 module.exports = router; 
