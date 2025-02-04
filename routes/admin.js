@@ -770,4 +770,42 @@ router.get('/get-booking-details/:id', async (req, res) => {
 })
 
 
+router.get('/get-all-packages-count', async (req, res) => {
+    try {
+        const counts = await packageSchema.aggregate([
+            {
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ])
+
+        res.status(200).json({ counts })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error getting packages count' })
+    }
+})
+
+
+router.get('/get-all-applications-count', async (req, res) => {
+    try {
+        const counts = await vendorApplicationSchema.aggregate([
+            {
+                $group: {
+                    _id: "$status",
+                    count: { $sum: 1 }
+                }
+            }
+        ])
+
+        res.status(200).json({ counts })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error getting applications count' })
+    }
+})
+
+
 module.exports = router;
