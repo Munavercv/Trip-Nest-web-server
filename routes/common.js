@@ -13,7 +13,8 @@ const bookingSchema = require('../models/bookings');
 const vendorSchema = require('../models/vendors')
 const notificationSchema = require('../models/notifications')
 const ObjectId = require('mongoose').Types.ObjectId;
-const { createNotification, markAsRead, markAllAsRead, sendAdminNotifications } = require('../utils/notificationUtils')
+const { createNotification, markAsRead, markAllAsRead, sendAdminNotifications } = require('../utils/notificationUtils');
+const { getPaymetDetails } = require('../helpers/paymentHelpers');
 
 
 router.get('/get-all-states-data', async (req, res) => {
@@ -689,6 +690,20 @@ router.get('/view-bookings-by-package/:packageId', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error fetching packages' })
+    }
+})
+
+
+router.get('/get-payment-details/:orderId', async (req, res) => {
+    const { orderId } = req.params
+
+    try {
+        const paymentDetails = await getPaymetDetails(orderId)
+
+        res.status(200).json({ paymentDetails })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching payment details' })
     }
 })
 

@@ -23,8 +23,7 @@ const packageSchema = new mongoose.Schema({
     },
     avgRating: { type: Number },
     createdAt: { type: Date, required: true },
-    updatedAt: { type: Date, default: Date.now }
-
+    updatedAt: { type: Date, default: Date.now },
 }, { collection: 'packages' })
 
 module.exports = mongoose.model('packages', packageSchema);

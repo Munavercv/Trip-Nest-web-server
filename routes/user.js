@@ -3,14 +3,23 @@ const router = express.Router();
 const ObjectId = require('mongoose').Types.ObjectId;
 const userSchema = require('../models/user');
 const vendorApplicationSchema = require('../models/vendorApplications')
-const vendorSchema = require('../models/vendors')
+const paymentSchema = require('../models/payments')
 const bookingSchema = require('../models/bookings')
 const packageSchema = require('../models/packages')
 const generateJWT = require('../utils/tokenUtils');
 const multer = require('multer')
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require('../utils/s3Client')
-const { sendAdminNotifications } = require('../utils/notificationUtils')
+const { sendAdminNotifications, createNotification } = require('../utils/notificationUtils')
+const Razorpay = require('razorpay')
+const { 
+    getPaymentsByUser
+ } = require('../helpers/paymentHelpers')
+
+const razorpay = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET
+})
 
 const uploadFilesToS3 = async (file, folderName) => {
     const fileKey = `${folderName}/${Date.now()}-${file.originalname}`;
@@ -334,6 +343,9 @@ router.get('/get-booking-details/:bookingId', async (req, res) => {
                     'packageDetails.title': 1,
                     'packageDetails.destination': 1,
                     'packageDetails.startDate': 1,
+                    'packageDetails.vendorId': 1,
+                    'paymentDetails.status': 1,
+                    'paymentDetails.orderId': 1,
                 }
             }
         ])
@@ -477,7 +489,7 @@ router.get('/check-package-is-favourite', async (req, res) => {
 
     if (!packageId || !userId)
         return res.status(400).json({ message: 'Package id or user id not found' })
-    
+
     try {
 
         const isFavourite = await userSchema.findOne({
@@ -495,16 +507,133 @@ router.get('/check-package-is-favourite', async (req, res) => {
 
 
 router.get('/get-favourite-packages/:userId', async (req, res) => {
-    const {userId} = req.params;
+    const { userId } = req.params;
 
     try {
         const packages = await userSchema.findById(userId).populate('favorites')
-        
-        res.status(200).json({packages: packages.favorites})
+
+        res.status(200).json({ packages: packages.favorites })
     } catch (error) {
         console.error(error);
-        res.status(500).json({message: 'Error fetching favourites'})
+        res.status(500).json({ message: 'Error fetching favourites' })
     }
 })
+
+
+router.post('/create-order', async (req, res) => {
+
+    const { amount, currency, userId, vendorId, bookingId } = req.body
+
+    const options = {
+        amount: amount,
+        currency: currency,
+        payment_capture: 1
+    }
+
+    try {
+        const response = await razorpay.orders.create(options)
+
+        const newPayment = new paymentSchema({
+            amount: response.amount / 100,
+            currency: response.currency,
+            orderId: response.id,
+            status: 'created',
+            date: new Date(),
+            bookingId,
+            userId,
+            vendorId
+        })
+
+        await newPayment.save();
+
+        res.status(200).json({
+            order_id: response.id,
+            currency: response.currency,
+            amount: response.amount
+        })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Order creation failed" })
+    }
+})
+
+
+router.post('/payment-success', async (req, res) => {
+    const { orderId, paymentId, bookingId } = req.body;
+
+    try {
+        const payment = await paymentSchema.findOneAndUpdate(
+            { orderId },
+            { paymentId, status: 'paid' },
+            { new: true }
+        );
+
+
+        if (!payment) {
+            return res.status(404).json({ message: "Payment not found" });
+        }
+
+        await bookingSchema.findByIdAndUpdate(bookingId, {
+            paymentDetails: {
+                status: true,
+                orderId
+            }
+        })
+
+        await createNotification(
+            'Payment Recieved',
+            'You recieved a payment',
+            payment.vendorId,
+            `/vendor/all-payments`
+        );
+
+        res.status(200).json({ message: "Payment recorded successfully", payment });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to update payment" });
+    }
+})
+
+
+router.put('/payment-failed', async (req, res) => {
+    const { orderId } = req.body
+
+    try {
+        const payment = await paymentSchema.findOneAndUpdate(
+            { orderId },
+            { status: 'failed' }
+        )
+
+        await createNotification(
+            'Payment Failed',
+            'Payment failed',
+            payment.vendorId,
+            `/vendor/all-payments`
+        );
+
+        res.status(200).json({ message: "Payment marked as failed" });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to update payment" })
+    }
+})
+
+
+router.get('/get-payments/:userId', async (req, res) => {
+    const { userId } = req.params;
+
+    try {
+        const payments = await getPaymentsByUser(userId)
+
+        if (!payments || payments.length === 0)
+            return res.status(404).json({ message: "No payments found" })
+
+        res.status(200).json({ payments })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching payments' })
+    }
+})
+
 
 module.exports = router; 

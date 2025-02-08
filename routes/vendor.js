@@ -9,6 +9,10 @@ const vendorSchema = require('../models/vendors')
 const ObjectId = require('mongoose').Types.ObjectId;
 const generateJWT = require('../utils/tokenUtils')
 const { createNotification, sendAdminNotifications } = require('../utils/notificationUtils')
+const {
+    getAllPaymentsByVendor,
+    calculateCurrentMonthRevenue
+} = require('../helpers/paymentHelpers')
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -306,6 +310,8 @@ router.get('/get-booking-details/:id', async (req, res) => {
                     'packageDetails.startDate': 1,
                     'user._id': 1,
                     'user.email': 1,
+                    'paymentDetails.status': 1,
+                    'paymentDetails.orderId': 1,
                 }
             }
         ])
@@ -539,6 +545,33 @@ router.put('/update-package/:id', upload.single('packageImage'), async (req, res
     }
 });
 
+
+router.get('/get-all-payments/:vendorId', async (req, res) => {
+    const { vendorId } = req.params
+
+    try {
+        const payments = await getAllPaymentsByVendor(vendorId)
+
+        if(!payments || payments.length === 0)
+            return res.status(404).json({message: "No payments found"})
+
+        res.status(200).json({payments})
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({message: "Error fetching payments"})
+    }
+})
+
+
+router.get('/monthly-revenue/:vendorId', async (req, res) => {
+    const {vendorId} = req.params
+    try {
+        const revenue = await calculateCurrentMonthRevenue(vendorId);
+        res.status(200).json({ revenue });
+    } catch (error) {
+        res.status(500).json({ message: 'Error calculating revenue' });
+    }
+});
 
 
 module.exports = router; 
