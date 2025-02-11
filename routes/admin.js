@@ -199,7 +199,7 @@ router.put('/approve-application/:id', async (req, res) => {
         await createNotification(
             'Congratulations, Vendor application is approved',
             `Your vendor application for ${application.businessName} is approved. click here or go to profile to activate vendor account`,
-            application.userId,
+            application.userId.toString(),
             '/view-my-vendor-application'
         );
 
@@ -227,7 +227,7 @@ router.put('/reject-application/:id', async (req, res) => {
         await createNotification(
             'Your Vendor application is rejected',
             `Your vendor application for ${application.businessName} is rejected.`,
-            application.userId,
+            application.userId.toString(),
             '/view-my-vendor-application'
         );
 
@@ -674,7 +674,7 @@ router.put('/approve-package/:id', async (req, res) => {
         await createNotification(
             'Congratulations, Your Package is approved',
             `Your package ${package.title} is approved.You need to activate package to make it public`,
-            package.vendorId,
+            package.vendorId.toString(),
             `/vendor/view-package/${id}`
         );
 
@@ -708,7 +708,7 @@ router.put('/reject-package/:id', async (req, res) => {
         await createNotification(
             'Sorry, Your Package is Rejected',
             `Your package ${package.title} is Rejected.`,
-            package.vendorId,
+            package.vendorId.toString(),
             `/vendor/view-package/${id}`
         );
 

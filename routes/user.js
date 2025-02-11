@@ -590,7 +590,7 @@ router.post('/payment-success', async (req, res) => {
         await createNotification(
             'Payment Recieved',
             'You recieved a payment',
-            payment.vendorId,
+            payment.vendorId.toString(),
             `/vendor/all-payments`
         );
 
@@ -614,7 +614,7 @@ router.put('/payment-failed', async (req, res) => {
         await createNotification(
             'Payment Failed',
             'Payment failed',
-            payment.vendorId,
+            payment.vendorId.toString(),
             `/vendor/all-payments`
         );
 
