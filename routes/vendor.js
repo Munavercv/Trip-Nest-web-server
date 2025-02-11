@@ -304,6 +304,7 @@ router.get('/get-booking-details/:id', async (req, res) => {
                     totalAmount: 1,
                     status: 1,
                     bookingDate: 1,
+                    userWhatsapp: 1,
                     'packageDetails._id': 1,
                     'packageDetails.title': 1,
                     'packageDetails.destination': 1,

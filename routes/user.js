@@ -290,7 +290,7 @@ router.get('/get-top-packages', async (req, res) => {
 
 router.post('/book-package/:packageId', async (req, res) => {
     const { packageId } = req.params;
-    const { numberOfSeats, specialRequests } = req.body.formData;
+    const { numberOfSeats, specialRequests, wtspNumber } = req.body.formData;
     const { userId, totalAmount, vendorId } = req.body
 
     try {
@@ -307,6 +307,7 @@ router.post('/book-package/:packageId', async (req, res) => {
             totalAmount,
             specialRequests,
             status: 'pending',
+            userWhatsapp: wtspNumber,
             bookingDate: new Date(),
         })
 
@@ -673,13 +674,25 @@ router.put('/add-review', async (req, res) => {
             'rating.avgRating': updatedAvgRating
         });
 
-        res.status(200).json({ message: "Review added and ratings updated successfully", updatedAvgRating });
+        res.status(200).json({ message: "Review added and ratings updated successfully", updatedAvgRating, review: newReview });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Error while rating" });
     }
 });
 
+
+router.get('/get-review', async (req, res) => {
+    const { userId, packageId } = req.query
+
+    try {
+        const review = await Review.findOne({ packageId, userId })
+        res.status(200).json({ review })
+    } catch (error) {
+        console.error(error)
+        res.status(500).json({ message: 'Error getting review' })
+    }
+})
 
 
 module.exports = router; 
