@@ -6,6 +6,7 @@ const vendorApplicationSchema = require('../models/vendorApplications')
 const paymentSchema = require('../models/payments')
 const bookingSchema = require('../models/bookings')
 const packageSchema = require('../models/packages')
+const Review = require('../models/packageReviews')
 const generateJWT = require('../utils/tokenUtils');
 const multer = require('multer')
 const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
@@ -641,6 +642,44 @@ router.get('/get-payments/:userId', async (req, res) => {
         res.status(500).json({ message: 'Error fetching payments' })
     }
 })
+
+
+router.put('/add-review', async (req, res) => {
+    const { rating, userId, packageId } = req.body;
+
+    try {
+        const newReview = new Review({
+            rating,
+            userId,
+            packageId,
+            createdAt: new Date()
+        });
+
+        await newReview.save();
+
+        const packageData = await packageSchema.findById(packageId);
+
+        if (!packageData) {
+            return res.status(404).json({ message: "Package not found" });
+        }
+
+        const updatedRatingsCount = packageData.rating.ratingsCount + 1;
+        const updatedTotalRating = packageData.rating.totalRating + rating;
+        const updatedAvgRating = Number((updatedTotalRating / updatedRatingsCount).toFixed(1));
+
+        await packageSchema.findByIdAndUpdate(packageId, {
+            'rating.ratingsCount': updatedRatingsCount,
+            'rating.totalRating': updatedTotalRating,
+            'rating.avgRating': updatedAvgRating
+        });
+
+        res.status(200).json({ message: "Review added and ratings updated successfully", updatedAvgRating });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error while rating" });
+    }
+});
+
 
 
 module.exports = router; 
