@@ -65,12 +65,12 @@ router.post('/login', async (req, res) => {
         }
 
         if (!user) {
-            return res.status(400).json({ message: 'User not found' })
+            return res.status(400).json({ message: 'Incorrect email or password' })
         }
 
         const passwordMatch = await bcrypt.compare(password, user.password);
         if (!passwordMatch) {
-            return res.status(400).json({ message: 'Incorrect password' });
+            return res.status(400).json({ message: 'Incorrect email or password' });
         }
 
         const token = generateJWT(user, userRole)

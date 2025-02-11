@@ -12,9 +12,9 @@ const { PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const s3 = require('../utils/s3Client')
 const { sendAdminNotifications, createNotification } = require('../utils/notificationUtils')
 const Razorpay = require('razorpay')
-const { 
+const {
     getPaymentsByUser
- } = require('../helpers/paymentHelpers')
+} = require('../helpers/paymentHelpers')
 
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
@@ -309,7 +309,14 @@ router.post('/book-package/:packageId', async (req, res) => {
             bookingDate: new Date(),
         })
 
-        await newBooking.save()
+        const booking = await newBooking.save()
+
+        await createNotification(
+            'New Booking',
+            'New booking is pending for approval',
+            vendorId.toString(),
+            `/vendor/view-booking-details/${booking._id}`
+        );
 
         res.status(200).json({ message: 'Booking successfull' })
     } catch (error) {

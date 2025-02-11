@@ -61,11 +61,9 @@ const io = new Server(server, {
 });
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
 
     socket.on('join-chat', (conversationId) => {
         socket.join(conversationId);
-        console.log(`User joined room: ${conversationId}`);
     });
 
     socket.on('send-message', async (messageData) => {

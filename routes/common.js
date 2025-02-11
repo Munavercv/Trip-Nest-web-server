@@ -287,12 +287,14 @@ router.get('/get-bookings-by-user/:userId', async (req, res) => {
 })
 
 
-router.delete('/delete-booking/:bookingId', async (req, res) => {
+router.delete('/cancel-booking/:bookingId', async (req, res) => {
     const { bookingId } = req.params
 
     try {
 
-        const booking = await bookingSchema.findByIdAndDelete(bookingId)
+        const booking = await bookingSchema.findByIdAndUpdate(bookingId, {
+            status: 'cancelled'
+        })
 
         if (!booking) {
             return res.status(404).json({ message: 'Booking not found' });
@@ -309,7 +311,13 @@ router.delete('/delete-booking/:bookingId', async (req, res) => {
             }
         }
 
-        res.status(200).json({ message: 'Deleted successfully' });
+        createNotification('Booking cancelled', 
+            'A booking is cancelled',
+            booking.vendorId.toString(),
+            `/vendor/view-booking-details/${bookingId}`
+        )
+
+        res.status(200).json({ message: 'Cancelled successfully' });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'An error occurred' });

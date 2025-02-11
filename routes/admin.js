@@ -706,7 +706,7 @@ router.put('/reject-package/:id', async (req, res) => {
         }
 
         await createNotification(
-            'Your Package is Rejected',
+            'Sorry, Your Package is Rejected',
             `Your package ${package.title} is Rejected.`,
             package.vendorId,
             `/vendor/view-package/${id}`
