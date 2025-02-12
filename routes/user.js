@@ -41,11 +41,11 @@ const upload = multer({ storage });
 
 router.put('/edit-profile/:userId', upload.single('file'), async (req, res) => {
     const { userId } = req.params;
-    const { name, email, phone } = req.body
-    const newDp = req.file
+    const { name, phone, removeImage } = req.body;
+    const newDp = req.file;
 
-    if (!name || !email || !phone) {
-        return res.status(400).json({ message: 'Name, email, and phone are required' });
+    if (!name || !phone) {
+        return res.status(400).json({ message: 'Name and phone are required' });
     }
 
     try {
@@ -56,6 +56,21 @@ router.put('/edit-profile/:userId', upload.single('file'), async (req, res) => {
         }
 
         let imageUrl = user.dpUrl;
+
+        if (removeImage === "true" && user.dpUrl) {
+            const oldKey = user.dpUrl.split('.amazonaws.com/')[1];
+            const deleteParams = {
+                Bucket: process.env.AWS_BUCKET_NAME,
+                Key: oldKey,
+            };
+
+            try {
+                await s3.send(new DeleteObjectCommand(deleteParams));
+                imageUrl = null;
+            } catch (error) {
+                console.error('Failed to delete old image:', error);
+            }
+        }
 
         if (newDp) {
             if (user.dpUrl) {
@@ -94,7 +109,6 @@ router.put('/edit-profile/:userId', upload.single('file'), async (req, res) => {
             {
                 $set: {
                     name,
-                    email,
                     phone,
                     dpUrl: imageUrl,
                     updatedAt: new Date(),
@@ -115,8 +129,7 @@ router.put('/edit-profile/:userId', upload.single('file'), async (req, res) => {
         console.error('Error updating user:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
-
-})
+});
 
 
 router.delete('/delete-account/:userId', async (req, res) => {
@@ -345,7 +358,7 @@ router.get('/get-booking-details/:bookingId', async (req, res) => {
             { $unwind: '$packageDetails' },
             {
                 $addFields: {
-                    convertedVendorId: { $toObjectId: '$packageDetails.vendorId' } 
+                    convertedVendorId: { $toObjectId: '$packageDetails.vendorId' }
                 }
             },
             {
@@ -375,7 +388,7 @@ router.get('/get-booking-details/:bookingId', async (req, res) => {
                 }
             }
         ]);
-        
+
 
         if (!bookingDetails)
             return res.status(404).json({ message: 'Booking details not found' })
