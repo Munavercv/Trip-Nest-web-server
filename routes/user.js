@@ -14,7 +14,8 @@ const s3 = require('../utils/s3Client')
 const { sendAdminNotifications, createNotification } = require('../utils/notificationUtils')
 const Razorpay = require('razorpay')
 const {
-    getPaymentsByUser
+    getPaymentsByUser,
+    searchPaymentsOfUserByDate
 } = require('../helpers/paymentHelpers')
 
 const razorpay = new Razorpay({
@@ -341,6 +342,21 @@ router.get('/get-booking-details/:bookingId', async (req, res) => {
                     as: 'packageDetails'
                 }
             },
+            { $unwind: '$packageDetails' },
+            {
+                $addFields: {
+                    convertedVendorId: { $toObjectId: '$packageDetails.vendorId' } 
+                }
+            },
+            {
+                $lookup: {
+                    from: 'vendors',
+                    localField: 'convertedVendorId',
+                    foreignField: '_id',
+                    as: 'vendorDetails'
+                }
+            },
+            { $unwind: '$vendorDetails' },
             {
                 $project: {
                     numberOfSeats: 1,
@@ -355,9 +371,11 @@ router.get('/get-booking-details/:bookingId', async (req, res) => {
                     'packageDetails.vendorId': 1,
                     'paymentDetails.status': 1,
                     'paymentDetails.orderId': 1,
+                    'vendorDetails.contact.phone': 1
                 }
             }
-        ])
+        ]);
+        
 
         if (!bookingDetails)
             return res.status(404).json({ message: 'Booking details not found' })
@@ -691,6 +709,25 @@ router.get('/get-review', async (req, res) => {
     } catch (error) {
         console.error(error)
         res.status(500).json({ message: 'Error getting review' })
+    }
+})
+
+
+router.get('/search-payments-by-date/:userId', async (req, res) => {
+    const { startDate, endDate } = req.query
+    const { userId } = req.params
+
+    try {
+        const payments = await searchPaymentsOfUserByDate(startDate, endDate, userId)
+
+        if (!payments || payments.length === 0) {
+            res.status(404).json({ message: 'No payments found on this date' })
+            return
+        }
+
+        res.status(200).json({ payments })
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching payments' })
     }
 })
 

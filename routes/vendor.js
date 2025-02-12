@@ -11,7 +11,8 @@ const generateJWT = require('../utils/tokenUtils')
 const { createNotification, sendAdminNotifications } = require('../utils/notificationUtils')
 const {
     getAllPaymentsByVendor,
-    calculateCurrentMonthRevenue
+    calculateCurrentMonthRevenue,
+    searchPaymentsOfVendorByDate
 } = require('../helpers/paymentHelpers')
 
 const storage = multer.memoryStorage();
@@ -553,19 +554,19 @@ router.get('/get-all-payments/:vendorId', async (req, res) => {
     try {
         const payments = await getAllPaymentsByVendor(vendorId)
 
-        if(!payments || payments.length === 0)
-            return res.status(404).json({message: "No payments found"})
+        if (!payments || payments.length === 0)
+            return res.status(404).json({ message: "No payments found" })
 
-        res.status(200).json({payments})
+        res.status(200).json({ payments })
     } catch (error) {
         console.error(error);
-        res.status(500).json({message: "Error fetching payments"})
+        res.status(500).json({ message: "Error fetching payments" })
     }
 })
 
 
 router.get('/monthly-revenue/:vendorId', async (req, res) => {
-    const {vendorId} = req.params
+    const { vendorId } = req.params
     try {
         const revenue = await calculateCurrentMonthRevenue(vendorId);
         res.status(200).json({ revenue });
@@ -573,6 +574,25 @@ router.get('/monthly-revenue/:vendorId', async (req, res) => {
         res.status(500).json({ message: 'Error calculating revenue' });
     }
 });
+
+
+router.get('/search-payments-by-date/:vendorId', async (req, res) => {
+    const { startDate, endDate } = req.query
+    const { vendorId } = req.params
+
+    try {
+        const payments = await searchPaymentsOfVendorByDate(startDate, endDate, vendorId)
+
+        if (!payments || payments.length === 0) {
+            res.status(404).json({ message: 'No payments found on this date' })
+            return
+        }
+
+        res.status(200).json({ payments })
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching payments' })
+    }
+})
 
 
 module.exports = router; 
