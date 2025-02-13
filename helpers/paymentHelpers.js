@@ -15,6 +15,19 @@ module.exports = {
         }
     },
 
+    getAllPayments: async () => {
+        try {
+            const payments = await Payment.find({})
+                .populate('vendorId', 'contact.email')
+                .populate('userId', 'email')
+                .sort({ date: -1 })
+            return payments
+        } catch (error) {
+            console.error(error);
+            throw error
+        }
+    },
+
     getAllPaymentsByVendor: async (vendorId) => {
         try {
             const payments = await Payment.find({ vendorId })

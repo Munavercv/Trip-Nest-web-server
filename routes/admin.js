@@ -6,10 +6,12 @@ const packageSchema = require('../models/packages');
 const paymentSchema = require('../models/payments');
 const vendorApplicationSchema = require('../models/vendorApplications')
 const bookingSchema = require('../models/bookings')
+const Terms = require('../models/termsAndConditions')
 const ObjectId = require('mongoose').Types.ObjectId;
 const { DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const s3 = require('../utils/s3Client')
-const { createNotification } = require('../utils/notificationUtils')
+const { createNotification } = require('../utils/notificationUtils');
+const { getAllPayments, searchPaymentsByDate } = require('../helpers/paymentHelpers');
 
 router.get('/get-vendors-count', async (req, res) => {
     try {
@@ -652,6 +654,27 @@ router.get('/get-all-inactive-packages', async (req, res) => {
     }
 })
 
+router.get('/get-all-expired-packages', async (req, res) => {
+    try {
+        const packages = await packageSchema.find({ status: "expired" }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ message: 'No packages found' })
+        }
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error while fetching packages' })
+    }
+})
+
 
 router.put('/approve-package/:id', async (req, res) => {
     const { id } = req.params
@@ -804,6 +827,90 @@ router.get('/get-all-applications-count', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error getting applications count' })
+    }
+})
+
+
+router.post('/create-terms', async (req, res) => {
+    const { name, content } = req.body;
+
+    try {
+        const newTerms = new Terms({
+            name,
+            content,
+            createdAt: new Date(),
+            updatedAt: new Date()
+        })
+
+        await newTerms.save()
+
+        res.status(200).json({ message: 'Created new terms and conditions' })
+    } catch (error) {
+        console.error('error');
+        res.status(500).json({ message: 'An error occured while creating terms and conditions' })
+    }
+})
+
+
+router.put('/deactivate-package/:id', async (req, res) => {
+    const { id } = req.params
+    try {
+        const package = await packageSchema.findByIdAndUpdate(id, {
+            $set: {
+                status: 'inactive',
+                updatedAt: new Date()
+            },
+        },
+            { new: true }
+        )
+
+        if (!package) {
+            return res.status(404).json({ message: 'Package not found' })
+        }
+
+        await createNotification(
+            'Your package deactivated',
+            'Your package is deactivated as requested',
+            package.vendorId.toString(),
+            `/vendor/view-package/${package._id}`
+        )
+            res.status(200).json({ message: 'Package Activated successfully', package })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Error while Activating package' })
+    }
+})
+
+
+router.get('/get-all-payments', async (req, res) => {
+    try {
+        const payments = await getAllPayments()
+
+        if (!payments || payments.length === 0)
+            return res.status(404).json({ message: "No payments found" })
+
+        res.status(200).json({ payments })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error fetching payments" })
+    }
+})
+
+
+router.get('/search-payments-by-date', async (req, res) => {
+    const { startDate, endDate } = req.query
+
+    try {
+        const payments = await searchPaymentsByDate(startDate, endDate)
+
+        if (!payments || payments.length === 0) {
+            res.status(404).json({ message: 'No payments found on this date' })
+            return
+        }
+
+        res.status(200).json({ payments })
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching payments' })
     }
 })
 
