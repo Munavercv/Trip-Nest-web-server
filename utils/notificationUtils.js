@@ -4,7 +4,7 @@ const ObjectId = require('mongoose').Types.ObjectId;
 
 const createNotification = async (title, body, targetIds, navLink) => {
 
-    if (!title || !targetIds.length === 0) {
+    if (!title || targetIds.length === 0) {
         console.error('Missing required fields: title or targetIds');
         return { success: false, message: 'Missing required fields' };
     }

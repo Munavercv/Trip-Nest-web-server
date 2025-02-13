@@ -13,7 +13,8 @@ const {
     getAllPaymentsByVendor,
     calculateCurrentMonthRevenue,
     searchPaymentsOfVendorByDate
-} = require('../helpers/paymentHelpers')
+} = require('../helpers/paymentHelpers');
+const { getTermsByName } = require('../helpers/termsHelpers');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -210,6 +211,28 @@ router.get('/get-inactive-packages/:vendorId', async (req, res) => {
     const { vendorId } = req.params
     try {
         const packages = await packageSchema.find({ vendorId, status: 'inactive' }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+        })
+        if (!packages || packages.length === 0) {
+            return res.status(404).json({ message: 'No packages found' })
+        }
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+router.get('/get-expired-packages/:vendorId', async (req, res) => {
+    const { vendorId } = req.params
+    try {
+        const packages = await packageSchema.find({ vendorId, status: 'expired' }, {
             title: 1,
             category: 1,
             price: 1,
@@ -591,6 +614,22 @@ router.get('/search-payments-by-date/:vendorId', async (req, res) => {
         res.status(200).json({ payments })
     } catch (error) {
         res.status(500).json({ message: 'Error fetching payments' })
+    }
+})
+
+
+router.get('/get-terms-by-name/:name', async (req, res) => {
+    const { name } = req.params;
+
+    try {
+        const terms = await getTermsByName(name)
+        if (!terms)
+            return res.status(404).json({ message: 'Terms and conditions not found' })
+
+        res.status(200).json({ data: terms })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Unexpected error occured while getting terms and conditions' })
     }
 })
 

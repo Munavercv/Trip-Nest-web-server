@@ -12,17 +12,76 @@ const passport = require('passport');
 const http = require('http');
 const { Server } = require('socket.io');
 const ObjectId = require('mongoose').Types.ObjectId;
-
+const cron = require('node-cron')
 const conversationSchema = require('./models/conversation');
 const messageSchema = require('./models/message')
+const packageSchema = require('./models/packages');
+const { createNotification } = require('./utils/notificationUtils');
 
 // const mongoURI = 'mongodb://127.0.0.1:27017/tripNestDB';
 const mongoURI = 'mongodb://admin:pass123@127.0.0.1:27017/tripNestDB?authSource=admin'
 
+const checkExpiredPackages = async () => {
+    try {
+        const today = new Date();
+
+        const expiredPackages = await packageSchema.find(
+            {
+                startDate: { $lt: today },
+                status: { $in: ['active', 'pending', 'approved'] }
+            },
+            { title: 1, vendorId: 1 }
+        );
+
+        if (expiredPackages.length === 0) {
+            console.log('No packages to update.');
+            return;
+        }
+
+        console.log('Expired Packages:', expiredPackages.map(pkg => pkg.title));
+
+        const result = await packageSchema.updateMany(
+            {
+                startDate: { $lt: today },
+                status: { $in: ['active', 'pending', 'approved'] }
+            },
+            {
+                $set: { status: 'expired', updatedAt: new Date() }
+            }
+        );
+
+        console.log(`Expired Packages Updated: ${result.modifiedCount}`);
+
+        const vendorPackagesMap = new Map();
+
+        expiredPackages.forEach(pkg => {
+            if (!vendorPackagesMap.has(pkg.vendorId)) {
+                vendorPackagesMap.set(pkg.vendorId, []);
+            }
+            vendorPackagesMap.get(pkg.vendorId).push(pkg.title);
+        });
+
+
+        for (const [vendorId, packageTitles] of vendorPackagesMap.entries()) {
+            await createNotification(
+                `${packageTitles.length} Packages Expired`,
+                `${packageTitles.join(', ')} - Are expired`,
+                vendorId,
+                '/vendor/expired-packages'
+            );
+        }
+
+
+    } catch (error) {
+        console.error('Error updating expired packages:', error);
+    }
+};
+
+cron.schedule('0 0 * * *', checkExpiredPackages);
+
 app.use(express.urlencoded({ extended: false }));
 app.use(express.json());
 app.use(cors({ origin: ['https://tripnest.xyz', 'http://localhost:3000'] }));
-// app.use(cors({ origin: 'http://localhost:3000' }));
 
 app.use(
     session({
