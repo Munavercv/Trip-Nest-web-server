@@ -760,4 +760,31 @@ router.get('/get-vendor-details/:vendorId', async (req, res) => {
 })
 
 
+router.get('/get-packages-by-vendor/:vendorId', async (req, res) => {
+    const { page, limit } = req.query;
+    const { vendorId } = req.params
+    try {
+        const skip = (page - 1) * limit
+
+        const packages = await packageSchema.find({ vendorId, status: 'active' }, {
+            title: 1,
+            category: 1,
+            price: 1,
+            destination: 1,
+            imageUrl: 1,
+            'rating.avgRating': 1,
+            createdAt: 1
+        })
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: 1 })
+
+        res.status(200).json({ packages })
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
 module.exports = router; 
