@@ -15,6 +15,7 @@ const notificationSchema = require('../models/notifications')
 const ObjectId = require('mongoose').Types.ObjectId;
 const { createNotification, markAsRead, markAllAsRead, sendAdminNotifications } = require('../utils/notificationUtils');
 const { getPaymetDetails } = require('../helpers/paymentHelpers');
+const mongoose = require('mongoose')
 
 
 router.get('/get-all-states-data', async (req, res) => {
@@ -107,7 +108,11 @@ router.get('/get-package/:id', async (req, res) => {
             return res.status(404).json({ message: 'Package not found' })
         }
 
-        res.status(200).json({ package })
+        const vendorId = new mongoose.Types.ObjectId(package.vendorId);
+
+        const vendor = await vendorSchema.findById(vendorId, "name dpUrl");
+
+        res.status(200).json({ package, vendor: vendor || { name: "Unknown", dpUrl: "" }, })
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'internal server error' })

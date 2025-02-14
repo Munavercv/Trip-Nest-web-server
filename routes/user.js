@@ -6,6 +6,7 @@ const vendorApplicationSchema = require('../models/vendorApplications')
 const paymentSchema = require('../models/payments')
 const bookingSchema = require('../models/bookings')
 const packageSchema = require('../models/packages')
+const vendorSchema = require('../models/vendors')
 const Review = require('../models/packageReviews')
 const generateJWT = require('../utils/tokenUtils');
 const multer = require('multer')
@@ -742,6 +743,20 @@ router.get('/search-payments-by-date/:userId', async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: 'Error fetching payments' })
     }
+})
+
+
+router.get('/get-vendor-details/:vendorId', async (req, res) => {
+    const { vendorId } = req.params
+
+    try {
+        const vendorDetails = await vendorSchema.findOne({ _id: new ObjectId(vendorId) })
+        res.status(200).json({ vendorDetails: vendorDetails })
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Internal server error' })
+    }
+
 })
 
 
