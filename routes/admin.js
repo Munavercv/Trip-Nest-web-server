@@ -12,6 +12,7 @@ const { DeleteObjectCommand } = require('@aws-sdk/client-s3')
 const s3 = require('../utils/s3Client')
 const { createNotification } = require('../utils/notificationUtils');
 const { getAllPayments, searchPaymentsByDate } = require('../helpers/paymentHelpers');
+const { getAllUpcomingPackages } = require('../helpers/packageHelpers');
 
 router.get('/get-vendors-count', async (req, res) => {
     try {
@@ -911,6 +912,19 @@ router.get('/search-payments-by-date', async (req, res) => {
         res.status(200).json({ payments })
     } catch (error) {
         res.status(500).json({ message: 'Error fetching payments' })
+    }
+})
+
+
+router.get('/get-all-upcoming-packages', async (req, res) => {
+    const { page, limit } = req.query;
+
+    try {
+        const packages = await getAllUpcomingPackages(page, limit)
+
+        res.status(200).json({ data: packages })
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching upcoming packages' })
     }
 })
 
