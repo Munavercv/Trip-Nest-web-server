@@ -81,7 +81,8 @@ module.exports = {
 
             const bookingUpdateResult = await Bookings.updateMany(
                 {
-                    packageId: { $in: expiredPackageIds }
+                    packageId: { $in: expiredPackageIds },
+                    status: { $ne: 'cancelled' }
                 },
                 {
                     $set: { status: 'expired', updatedAt: new Date() }
