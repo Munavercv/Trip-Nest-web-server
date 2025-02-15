@@ -1,4 +1,7 @@
-const Packages = require('../models/packages')
+const Packages = require('../models/packages');
+const Bookings = require('../models/bookings')
+const { createNotification } = require('../utils/notificationUtils');
+
 
 module.exports = {
     getUpcomingPackagesOfVendor: async (vendorId, page, limit) => {
@@ -43,5 +46,102 @@ module.exports = {
             console.error("Error fetching upcoming packages:", error);
             throw error;
         }
+    },
+
+
+    checkExpiredPackages: async () => {
+        try {
+            const today = new Date();
+
+            const expiredPackages = await Packages.find(
+                {
+                    startDate: { $lt: today },
+                    status: { $in: ['active', 'pending', 'approved'] }
+                },
+                { title: 1, vendorId: 1 }
+            );
+
+            if (expiredPackages.length === 0) {
+                console.log('No packages to update.');
+                return;
+            }
+
+            const result = await Packages.updateMany(
+                {
+                    startDate: { $lt: today },
+                    status: { $in: ['active', 'pending', 'approved'] }
+                },
+                {
+                    $set: { status: 'expired', updatedAt: new Date() }
+                }
+            );
+
+            console.log(`Expired Packages Updated: ${result.modifiedCount}`);
+
+            const vendorPackagesMap = new Map();
+
+            expiredPackages.forEach(pkg => {
+                if (!vendorPackagesMap.has(pkg.vendorId)) {
+                    vendorPackagesMap.set(pkg.vendorId, []);
+                }
+                vendorPackagesMap.get(pkg.vendorId).push(pkg.title);
+            });
+
+
+            for (const [vendorId, packageTitles] of vendorPackagesMap.entries()) {
+                await createNotification(
+                    `${packageTitles.length} Packages Expired`,
+                    `${packageTitles.join(', ')} - Are expired`,
+                    vendorId,
+                    '/vendor/expired-packages'
+                );
+            }
+
+
+        } catch (error) {
+            console.error('Error updating expired packages:', error);
+        }
+    },
+
+
+    getTrendingPlaces: async (limit) => {
+        try {
+            const trendingPlaces = await Bookings.aggregate([
+                {
+                    $lookup: {
+                        from: "packages",
+                        localField: "packageId",
+                        foreignField: "_id",
+                        as: "packageDetails"
+                    }
+                },
+                { $unwind: "$packageDetails" },
+                {
+                    $group: {
+                        _id: { $arrayElemAt: [{ $split: ["$packageDetails.destination", ","] }, 0] },
+                        bookingCount: { $sum: 1 },
+                        avgRating: { $avg: "$packageDetails.avgRating" },
+                        imageUrl: { $first: "$packageDetails.imageUrl" }
+                    }
+                },
+                {
+                    $sort: { bookingCount: -1, avgRating: -1 }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        destination: "$_id",
+                        imageUrl: 1
+                    }
+                },
+                { $limit: limit }
+            ]);            
+
+            return trendingPlaces;
+        } catch (error) {
+            console.error("Error fetching trending places:", error);
+            return [];
+        }
     }
+
 }

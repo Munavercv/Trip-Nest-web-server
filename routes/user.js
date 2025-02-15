@@ -17,7 +17,8 @@ const Razorpay = require('razorpay')
 const {
     getPaymentsByUser,
     searchPaymentsOfUserByDate
-} = require('../helpers/paymentHelpers')
+} = require('../helpers/paymentHelpers');
+const { getTrendingPlaces } = require('../helpers/packageHelpers');
 
 const razorpay = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
@@ -133,43 +134,45 @@ router.put('/edit-profile/:userId', upload.single('file'), async (req, res) => {
 });
 
 
-router.delete('/delete-account/:userId', async (req, res) => {
-    const { userId } = req.params;
+// router.delete('/delete-account/:userId', async (req, res) => {
+//     const { userId } = req.params;
 
-    try {
-        const user = await userSchema.findById(userId);
+//     try {
+//         const user = await userSchema.findById(userId);
 
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+//         if (!user) {
+//             return res.status(404).json({ message: 'User not found' });
+//         }
 
-        if (user.dpUrl) {
-            const dpKey = user.dpUrl.split('.amazonaws.com/')[1];
-            const deleteParams = {
-                Bucket: process.env.AWS_BUCKET_NAME,
-                Key: dpKey,
-            };
+//         if (user.dpUrl) {
+//             const dpKey = user.dpUrl.split('.amazonaws.com/')[1];
+//             const deleteParams = {
+//                 Bucket: process.env.AWS_BUCKET_NAME,
+//                 Key: dpKey,
+//             };
 
-            try {
-                await s3.send(new DeleteObjectCommand(deleteParams));
-            } catch (error) {
-                console.error('Error deleting profile picture from S3:', error);
-                res.status(404).json({ message: 'Internal server error' })
-            }
-        }
+//             try {
+//                 await s3.send(new DeleteObjectCommand(deleteParams));
+//             } catch (error) {
+//                 console.error('Error deleting profile picture from S3:', error);
+//                 res.status(404).json({ message: 'Internal server error' })
+//             }
+//         }
 
-        const response = await userSchema.deleteOne({ _id: new ObjectId(userId) })
+//         const response = await userSchema.deleteOne({ _id: new ObjectId(userId) })
 
-        if (response.deletedCount === 0) {
-            return res.status(404).json({ message: 'User not found' });
-        }
+//         if (response.deletedCount === 0) {
+//             return res.status(404).json({ message: 'User not found' });
+//         }
 
-        res.status(200).json({ message: 'Successfully deleted user account' })
-    } catch (error) {
-        console.error(error)
-        res.status(500).json({ message: 'Internal server error' })
-    }
-})
+//         await bookingSchema.deleteMany({ userId: new ObjectId(userId) })
+
+//         res.status(200).json({ message: 'Successfully deleted user account' })
+//     } catch (error) {
+//         console.error(error)
+//         res.status(500).json({ message: 'Internal server error' })
+//     }
+// })
 
 
 router.post('/vendor-application', upload.fields([
@@ -783,6 +786,17 @@ router.get('/get-packages-by-vendor/:vendorId', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal server error' })
+    }
+})
+
+
+router.get('/get-trending-places', async (req, res) => {
+    const limit = Number(req.query.limit);
+    try {
+        const data = await getTrendingPlaces(limit)
+        res.status(200).json({ data })
+    } catch (error) {
+        res.status(500).json({ message: 'Error getting trending places' })
     }
 })
 
