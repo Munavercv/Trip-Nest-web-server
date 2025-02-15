@@ -15,6 +15,7 @@ const {
     searchPaymentsOfVendorByDate
 } = require('../helpers/paymentHelpers');
 const { getTermsByName } = require('../helpers/termsHelpers');
+const { getUpcomingPackagesOfVendor } = require('../helpers/packageHelpers');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -606,6 +607,19 @@ router.get('/get-terms-by-name/:name', async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Unexpected error occured while getting terms and conditions' })
+    }
+})
+
+
+router.get('/get-upcoming-packages', async (req, res) => {
+    const { vendorId, page, limit } = req.query;
+
+    try {
+        const packages = await getUpcomingPackagesOfVendor(vendorId, page, limit)
+
+        res.status(200).json({ data: packages })
+    } catch (error) {
+        res.status(500).json({ message: 'Error fetching upcoming packages' })
     }
 })
 
