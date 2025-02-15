@@ -116,6 +116,9 @@ module.exports = {
                     }
                 },
                 { $unwind: "$packageDetails" },
+                { 
+                    $match: { "packageDetails.status": "active" }
+                },
                 {
                     $group: {
                         _id: { $arrayElemAt: [{ $split: ["$packageDetails.destination", ","] }, 0] },
