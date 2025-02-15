@@ -56,9 +56,9 @@ module.exports = {
             const expiredPackages = await Packages.find(
                 {
                     startDate: { $lt: today },
-                    status: { $in: ['active', 'pending', 'approved'] }
+                    status: { $in: ['active', 'pending', 'approved', 'inactive'] }
                 },
-                { title: 1, vendorId: 1 }
+                { _id: 1, title: 1, vendorId: 1 }
             );
 
             if (expiredPackages.length === 0) {
@@ -66,17 +66,29 @@ module.exports = {
                 return;
             }
 
-            const result = await Packages.updateMany(
+            const expiredPackageIds = expiredPackages.map(pkg => pkg._id);
+
+            const packageUpdateResult = await Packages.updateMany(
                 {
-                    startDate: { $lt: today },
-                    status: { $in: ['active', 'pending', 'approved'] }
+                    _id: { $in: expiredPackageIds }
                 },
                 {
                     $set: { status: 'expired', updatedAt: new Date() }
                 }
             );
 
-            console.log(`Expired Packages Updated: ${result.modifiedCount}`);
+            console.log(`Expired Packages Updated: ${packageUpdateResult.modifiedCount}`);
+
+            const bookingUpdateResult = await Bookings.updateMany(
+                {
+                    packageId: { $in: expiredPackageIds }
+                },
+                {
+                    $set: { status: 'expired', updatedAt: new Date() }
+                }
+            );
+
+            console.log(`Expired Bookings Updated: ${bookingUpdateResult.modifiedCount}`);
 
             const vendorPackagesMap = new Map();
 
@@ -87,7 +99,6 @@ module.exports = {
                 vendorPackagesMap.get(pkg.vendorId).push(pkg.title);
             });
 
-
             for (const [vendorId, packageTitles] of vendorPackagesMap.entries()) {
                 await createNotification(
                     `${packageTitles.length} Packages Expired`,
@@ -96,7 +107,6 @@ module.exports = {
                     '/vendor/expired-packages'
                 );
             }
-
 
         } catch (error) {
             console.error('Error updating expired packages:', error);
@@ -108,6 +118,9 @@ module.exports = {
         try {
             const trendingPlaces = await Bookings.aggregate([
                 {
+                    $match: { status: { $ne: 'expired' } }
+                },
+                {
                     $lookup: {
                         from: "packages",
                         localField: "packageId",
@@ -116,7 +129,7 @@ module.exports = {
                     }
                 },
                 { $unwind: "$packageDetails" },
-                { 
+                {
                     $match: { "packageDetails.status": "active" }
                 },
                 {
@@ -138,7 +151,7 @@ module.exports = {
                     }
                 },
                 { $limit: limit }
-            ]);            
+            ]);
 
             return trendingPlaces;
         } catch (error) {
