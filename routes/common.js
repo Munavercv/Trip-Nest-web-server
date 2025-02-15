@@ -270,12 +270,13 @@ router.get('/get-bookings-by-user/:userId', async (req, res) => {
                     _id: 1,
                     status: 1,
                     bookingDate: 1,
-                    'packageData.title': 1
+                    'packageData.title': 1,
+                    'packageData.startDate': 1
                 }
             },
             {
                 $sort: {
-                    bookingDate: -1
+                    startDate: 1
                 }
             }
         ])
